@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ArrowLeft, Check, SkipForward } from "lucide-react";
 import { exerciseDose, pickDailyThree, pickHalf, type Exercise } from "@/lib/exercises";
-import { todayISO, useAppState, markCompleted } from "@/lib/storage";
+import { todayISO, useAppState, addSession } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
 
 type Mode = "dagens3" | "halvt";
@@ -41,7 +41,16 @@ function WorkoutPage() {
   }
 
   function finish() {
-    setState((s) => markCompleted(s));
+    setState((s) =>
+      addSession(s, {
+        mode,
+        exercises: exercises.map((exercise, i) => ({
+          id: exercise.id,
+          name: exercise.name,
+          status: done[i] ? "done" : "skipped",
+        })),
+      }),
+    );
     navigate({ to: "/" });
   }
 
@@ -71,6 +80,22 @@ function WorkoutPage() {
               <p className="mt-5 text-[15px] leading-relaxed text-muted-foreground">
                 {current.instruction}
               </p>
+              {(current.easier || current.harder) && (
+                <div className="mt-5 space-y-2 rounded-2xl bg-secondary/60 p-4 text-sm">
+                  {current.easier && (
+                    <p>
+                      <span className="font-medium">Lättare: </span>
+                      <span className="text-muted-foreground">{current.easier}</span>
+                    </p>
+                  )}
+                  {current.harder && (
+                    <p>
+                      <span className="font-medium">Svårare: </span>
+                      <span className="text-muted-foreground">{current.harder}</span>
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="mt-6 grid grid-cols-[1fr_auto] gap-3">
@@ -107,7 +132,7 @@ function WorkoutPage() {
                   >
                     {done[i] ? "✓" : i + 1}
                   </span>
-                  {e.name}
+                  <span className="truncate">{e.name}</span>
                 </li>
               ))}
             </ul>
