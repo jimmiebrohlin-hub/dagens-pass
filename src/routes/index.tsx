@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { Flame, Target, Hash } from "lucide-react";
-import { useAppState, computeStreak, weekCount, todayISO } from "@/lib/storage";
+import { Flame, Target, Hash, Bell } from "lucide-react";
+import { useAppState, computeStreak, weekCount, todayISO, updateReminder } from "@/lib/storage";
 import { exerciseDose, pickDailyThree } from "@/lib/exercises";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
 
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const [state] = useAppState();
+  const [state, setState] = useAppState();
   const today = todayISO();
   const daily = pickDailyThree(today);
   const streak = computeStreak(state.completedDates);
@@ -115,6 +115,51 @@ function Index() {
                 }`}
               />
             ))}
+          </div>
+        </section>
+
+        <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15">
+              <Bell className="h-4 w-4 text-primary-foreground/80" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">Daglig påminnelse</p>
+                  <p className="text-xs text-muted-foreground">
+                    {state.reminder.enabled ? `På klockan ${state.reminder.time}` : "Avstängd"}
+                  </p>
+                </div>
+                <button
+                  onClick={() =>
+                    setState((s) => updateReminder(s, { enabled: !s.reminder.enabled }))
+                  }
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.98] ${
+                    state.reminder.enabled
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-secondary-foreground"
+                  }`}
+                >
+                  {state.reminder.enabled ? "På" : "Av"}
+                </button>
+              </div>
+              <label className="mt-3 block text-xs text-muted-foreground" htmlFor="reminder-time">
+                Tid
+              </label>
+              <input
+                id="reminder-time"
+                type="time"
+                value={state.reminder.time}
+                onChange={(event) =>
+                  setState((s) => updateReminder(s, { time: event.target.value || "08:00" }))
+                }
+                className="mt-1 h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none ring-ring transition focus:ring-2"
+              />
+              <p className="mt-2 text-xs text-muted-foreground">
+                Förberett för riktig notis senare. Just nu sparas inställningen lokalt.
+              </p>
+            </div>
           </div>
         </section>
 
