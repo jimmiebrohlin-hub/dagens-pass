@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { Flame, Target, Hash, Bell, Star, EyeOff } from "lucide-react";
+import { Flame, Target, Hash, Bell, Star, EyeOff, BarChart3 } from "lucide-react";
 import { useAppState, computeStreak, weekCount, todayISO, updateReminder, toggleFavorite, toggleBlocked } from "@/lib/storage";
 import { EXERCISES, exerciseDose, pickDailyThree } from "@/lib/exercises";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
@@ -32,9 +32,7 @@ function Index() {
           <div>
             <div className="flex items-center gap-2">
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{APP_NAME}</p>
-              <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {APP_VERSION}
-              </span>
+              <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{APP_VERSION}</span>
             </div>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight">Små steg idag?</h1>
           </div>
@@ -51,27 +49,17 @@ function Index() {
             <p className="text-xs text-muted-foreground">2–10 min</p>
           </div>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight">Dagens 3</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            En övning för ben, en för överkropp och en för core.
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">En övning för ben, en för överkropp och en för core.</p>
           <ul className="mt-4 space-y-2">
             {daily.map((e, i) => (
               <li key={e.id} className="flex items-center gap-3 text-[15px]">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary-foreground/80">
-                  {i + 1}
-                </span>
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary-foreground/80">{i + 1}</span>
                 <span className="truncate">{e.name}</span>
-                <span className="ml-auto whitespace-nowrap text-xs text-muted-foreground">
-                  {exerciseDose(e)}
-                </span>
+                <span className="ml-auto whitespace-nowrap text-xs text-muted-foreground">{exerciseDose(e)}</span>
               </li>
             ))}
           </ul>
-          <Link
-            to="/workout"
-            search={{ mode: "dagens3" }}
-            className="mt-6 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-base font-medium text-primary-foreground shadow-sm transition active:scale-[0.99]"
-          >
+          <Link to="/workout" search={{ mode: "dagens3" }} className="mt-6 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-base font-medium text-primary-foreground shadow-sm transition active:scale-[0.99]">
             Starta dagens 3
           </Link>
         </section>
@@ -102,24 +90,21 @@ function Index() {
               <div key={i} className={`h-2 flex-1 rounded-full ${i < week ? "bg-primary" : "bg-muted"}`} />
             ))}
           </div>
+          <Link to="/stats" className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99]">
+            <BarChart3 className="h-4 w-4" /> Visa statistik
+          </Link>
         </section>
 
         <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
           <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15">
-              <Bell className="h-4 w-4 text-primary-foreground/80" />
-            </div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15"><Bell className="h-4 w-4 text-primary-foreground/80" /></div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium">Daglig påminnelse</p>
-                  <p className="text-xs text-muted-foreground">
-                    {state.reminder.enabled ? `På klockan ${state.reminder.time}` : "Avstängd"}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{state.reminder.enabled ? `På klockan ${state.reminder.time}` : "Avstängd"}</p>
                 </div>
-                <button onClick={() => setState((s) => updateReminder(s, { enabled: !s.reminder.enabled }))} className={`rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.98] ${state.reminder.enabled ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
-                  {state.reminder.enabled ? "På" : "Av"}
-                </button>
+                <button onClick={() => setState((s) => updateReminder(s, { enabled: !s.reminder.enabled }))} className={`rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.98] ${state.reminder.enabled ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>{state.reminder.enabled ? "På" : "Av"}</button>
               </div>
               <label className="mt-3 block text-xs text-muted-foreground" htmlFor="reminder-time">Tid</label>
               <input id="reminder-time" type="time" value={state.reminder.time} onChange={(event) => setState((s) => updateReminder(s, { time: event.target.value || "08:00" }))} className="mt-1 h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none ring-ring transition focus:ring-2" />
@@ -138,12 +123,8 @@ function Index() {
               return (
                 <li key={exercise.id} className="flex items-center gap-2 rounded-2xl bg-secondary/50 p-3">
                   <span className="min-w-0 flex-1 truncate text-sm">{exercise.name}</span>
-                  <button onClick={() => setState((s) => toggleFavorite(s, exercise.id))} className={`flex h-8 w-8 items-center justify-center rounded-full ${favorite ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`} aria-label="Favorit">
-                    <Star className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => setState((s) => toggleBlocked(s, exercise.id))} className={`flex h-8 w-8 items-center justify-center rounded-full ${blocked ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`} aria-label="Dölj">
-                    <EyeOff className="h-4 w-4" />
-                  </button>
+                  <button onClick={() => setState((s) => toggleFavorite(s, exercise.id))} className={`flex h-8 w-8 items-center justify-center rounded-full ${favorite ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`} aria-label="Favorit"><Star className="h-4 w-4" /></button>
+                  <button onClick={() => setState((s) => toggleBlocked(s, exercise.id))} className={`flex h-8 w-8 items-center justify-center rounded-full ${blocked ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`} aria-label="Dölj"><EyeOff className="h-4 w-4" /></button>
                 </li>
               );
             })}
