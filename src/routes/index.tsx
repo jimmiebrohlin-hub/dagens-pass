@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { Flame, Target, Hash, Bell, Star, EyeOff, BarChart3 } from "lucide-react";
-import { useAppState, computeStreak, weekCount, todayISO, updateReminder, toggleFavorite, toggleBlocked } from "@/lib/storage";
-import { EXERCISES, exerciseDose, pickDailyThree } from "@/lib/exercises";
+import { Flame, Target, Hash, BarChart3, Settings } from "lucide-react";
+import { useAppState, computeStreak, weekCount, todayISO } from "@/lib/storage";
+import { exerciseDose, pickDailyThree } from "@/lib/exercises";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
 
 export const Route = createFileRoute("/")({
@@ -18,12 +18,14 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const [state, setState] = useAppState();
+  const [state] = useAppState();
   const today = todayISO();
   const daily = pickDailyThree(today, state.preferences);
   const streak = computeStreak(state.completedDates);
   const week = weekCount(state.completedDates);
   const goal = 3;
+  const favorites = state.preferences.favoriteIds.length;
+  const hidden = state.preferences.blockedIds.length;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -90,45 +92,21 @@ function Index() {
               <div key={i} className={`h-2 flex-1 rounded-full ${i < week ? "bg-primary" : "bg-muted"}`} />
             ))}
           </div>
-          <Link to="/stats" className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99]">
-            <BarChart3 className="h-4 w-4" /> Visa statistik
-          </Link>
-        </section>
-
-        <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
-          <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15"><Bell className="h-4 w-4 text-primary-foreground/80" /></div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium">Daglig påminnelse</p>
-                  <p className="text-xs text-muted-foreground">{state.reminder.enabled ? `På klockan ${state.reminder.time}` : "Avstängd"}</p>
-                </div>
-                <button onClick={() => setState((s) => updateReminder(s, { enabled: !s.reminder.enabled }))} className={`rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.98] ${state.reminder.enabled ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>{state.reminder.enabled ? "På" : "Av"}</button>
-              </div>
-              <label className="mt-3 block text-xs text-muted-foreground" htmlFor="reminder-time">Tid</label>
-              <input id="reminder-time" type="time" value={state.reminder.time} onChange={(event) => setState((s) => updateReminder(s, { time: event.target.value || "08:00" }))} className="mt-1 h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none ring-ring transition focus:ring-2" />
-              <p className="mt-2 text-xs text-muted-foreground">Förberett för riktig notis senare. Just nu sparas inställningen lokalt.</p>
-            </div>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <Link to="/stats" className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99]">
+              <BarChart3 className="h-4 w-4" /> Statistik
+            </Link>
+            <Link to="/settings" className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99]">
+              <Settings className="h-4 w-4" /> Inställningar
+            </Link>
           </div>
         </section>
 
         <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
-          <p className="text-sm font-medium">Övningsval</p>
-          <p className="mt-1 text-xs text-muted-foreground">Stjärna favoriter. Dölj övningar du inte vill få slumpade.</p>
-          <ul className="mt-4 space-y-2">
-            {EXERCISES.map((exercise) => {
-              const favorite = state.preferences.favoriteIds.includes(exercise.id);
-              const blocked = state.preferences.blockedIds.includes(exercise.id);
-              return (
-                <li key={exercise.id} className="flex items-center gap-2 rounded-2xl bg-secondary/50 p-3">
-                  <span className="min-w-0 flex-1 truncate text-sm">{exercise.name}</span>
-                  <button onClick={() => setState((s) => toggleFavorite(s, exercise.id))} className={`flex h-8 w-8 items-center justify-center rounded-full ${favorite ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`} aria-label="Favorit"><Star className="h-4 w-4" /></button>
-                  <button onClick={() => setState((s) => toggleBlocked(s, exercise.id))} className={`flex h-8 w-8 items-center justify-center rounded-full ${blocked ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`} aria-label="Dölj"><EyeOff className="h-4 w-4" /></button>
-                </li>
-              );
-            })}
-          </ul>
+          <p className="text-sm font-medium">Appen är anpassad</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Påminnelse {state.reminder.enabled ? `på ${state.reminder.time}` : "av"}. {favorites} favoriter och {hidden} dolda övningar.
+          </p>
         </section>
 
         <p className="mt-8 text-center text-xs text-muted-foreground">Små steg. Starkare varje dag.</p>
