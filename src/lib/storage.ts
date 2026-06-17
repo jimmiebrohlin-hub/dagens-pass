@@ -20,10 +20,16 @@ export interface WorkoutSession {
   totalReps?: number;
 }
 
+export interface ReminderSettings {
+  enabled: boolean;
+  time: string;
+}
+
 export interface AppState {
   completedDates: string[];
   sessions: WorkoutSession[];
   hundred: Record<string, { reps: number }>;
+  reminder: ReminderSettings;
 }
 
 const KEY = "vardagsstyrka-app-state-v1";
@@ -31,7 +37,13 @@ const LEGACY_KEY = "trean-app-state-v1";
 const STATE_EVENT = "vardagsstyrka:state";
 const LEGACY_STATE_EVENT = "trean:state";
 
-const DEFAULT: AppState = { completedDates: [], sessions: [], hundred: {} };
+const DEFAULT_REMINDER: ReminderSettings = { enabled: false, time: "08:00" };
+const DEFAULT: AppState = {
+  completedDates: [],
+  sessions: [],
+  hundred: {},
+  reminder: DEFAULT_REMINDER,
+};
 
 export function loadState(): AppState {
   if (typeof window === "undefined") return DEFAULT;
@@ -45,6 +57,7 @@ export function loadState(): AppState {
       completedDates: Array.isArray(parsed.completedDates) ? parsed.completedDates : [],
       sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
       hundred: parsed.hundred ?? {},
+      reminder: { ...DEFAULT_REMINDER, ...(parsed.reminder ?? {}) },
     };
   } catch {
     return DEFAULT;
@@ -91,6 +104,13 @@ export function todayISO(d = new Date()): string {
 export function markCompleted(s: AppState, date = todayISO()): AppState {
   if (s.completedDates.includes(date)) return s;
   return { ...s, completedDates: [...s.completedDates, date].sort() };
+}
+
+export function updateReminder(s: AppState, reminder: Partial<ReminderSettings>): AppState {
+  return {
+    ...s,
+    reminder: { ...s.reminder, ...reminder },
+  };
 }
 
 export function addSession(s: AppState, session: Omit<WorkoutSession, "id" | "date" | "completedAt">): AppState {
