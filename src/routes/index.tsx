@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { Flame, Target, Hash, Bell } from "lucide-react";
-import { useAppState, computeStreak, weekCount, todayISO, updateReminder } from "@/lib/storage";
-import { exerciseDose, pickDailyThree } from "@/lib/exercises";
+import { Flame, Target, Hash, Bell, Star, EyeOff } from "lucide-react";
+import { useAppState, computeStreak, weekCount, todayISO, updateReminder, toggleFavorite, toggleBlocked } from "@/lib/storage";
+import { EXERCISES, exerciseDose, pickDailyThree } from "@/lib/exercises";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
 
 export const Route = createFileRoute("/")({
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/")({
 function Index() {
   const [state, setState] = useAppState();
   const today = todayISO();
-  const daily = pickDailyThree(today);
+  const daily = pickDailyThree(today, state.preferences);
   const streak = computeStreak(state.completedDates);
   const week = weekCount(state.completedDates);
   const goal = 3;
@@ -77,19 +77,12 @@ function Index() {
         </section>
 
         <div className="grid grid-cols-2 gap-3">
-          <Link
-            to="/workout"
-            search={{ mode: "halvt" }}
-            className="group rounded-2xl bg-card p-4 ring-1 ring-border/60 transition active:scale-[0.99]"
-          >
+          <Link to="/workout" search={{ mode: "halvt" }} className="group rounded-2xl bg-card p-4 ring-1 ring-border/60 transition active:scale-[0.99]">
             <Target className="h-5 w-5 text-primary" />
             <p className="mt-3 text-sm font-medium">Halvt pass</p>
             <p className="text-xs text-muted-foreground">5 övningar · 2 set</p>
           </Link>
-          <Link
-            to="/hundred"
-            className="group rounded-2xl bg-card p-4 ring-1 ring-border/60 transition active:scale-[0.99]"
-          >
+          <Link to="/hundred" className="group rounded-2xl bg-card p-4 ring-1 ring-border/60 transition active:scale-[0.99]">
             <Hash className="h-5 w-5 text-primary" />
             <p className="mt-3 text-sm font-medium">100 reps</p>
             <p className="text-xs text-muted-foreground">Vägen till 102</p>
@@ -100,20 +93,13 @@ function Index() {
           <div className="flex items-end justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Veckans mål</p>
-              <p className="mt-1 text-lg font-medium">
-                {week} / {goal} pass
-              </p>
+              <p className="mt-1 text-lg font-medium">{week} / {goal} pass</p>
             </div>
             <p className="text-xs text-muted-foreground">Mån–sön</p>
           </div>
           <div className="mt-3 flex gap-1.5">
             {Array.from({ length: goal }).map((_, i) => (
-              <div
-                key={i}
-                className={`h-2 flex-1 rounded-full ${
-                  i < week ? "bg-primary" : "bg-muted"
-                }`}
-              />
+              <div key={i} className={`h-2 flex-1 rounded-full ${i < week ? "bg-primary" : "bg-muted"}`} />
             ))}
           </div>
         </section>
@@ -131,41 +117,40 @@ function Index() {
                     {state.reminder.enabled ? `På klockan ${state.reminder.time}` : "Avstängd"}
                   </p>
                 </div>
-                <button
-                  onClick={() =>
-                    setState((s) => updateReminder(s, { enabled: !s.reminder.enabled }))
-                  }
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.98] ${
-                    state.reminder.enabled
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-secondary-foreground"
-                  }`}
-                >
+                <button onClick={() => setState((s) => updateReminder(s, { enabled: !s.reminder.enabled }))} className={`rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.98] ${state.reminder.enabled ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
                   {state.reminder.enabled ? "På" : "Av"}
                 </button>
               </div>
-              <label className="mt-3 block text-xs text-muted-foreground" htmlFor="reminder-time">
-                Tid
-              </label>
-              <input
-                id="reminder-time"
-                type="time"
-                value={state.reminder.time}
-                onChange={(event) =>
-                  setState((s) => updateReminder(s, { time: event.target.value || "08:00" }))
-                }
-                className="mt-1 h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none ring-ring transition focus:ring-2"
-              />
-              <p className="mt-2 text-xs text-muted-foreground">
-                Förberett för riktig notis senare. Just nu sparas inställningen lokalt.
-              </p>
+              <label className="mt-3 block text-xs text-muted-foreground" htmlFor="reminder-time">Tid</label>
+              <input id="reminder-time" type="time" value={state.reminder.time} onChange={(event) => setState((s) => updateReminder(s, { time: event.target.value || "08:00" }))} className="mt-1 h-11 w-full rounded-2xl border border-border bg-background px-3 text-sm outline-none ring-ring transition focus:ring-2" />
+              <p className="mt-2 text-xs text-muted-foreground">Förberett för riktig notis senare. Just nu sparas inställningen lokalt.</p>
             </div>
           </div>
         </section>
 
-        <p className="mt-8 text-center text-xs text-muted-foreground">
-          Små steg. Starkare varje dag.
-        </p>
+        <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
+          <p className="text-sm font-medium">Övningsval</p>
+          <p className="mt-1 text-xs text-muted-foreground">Stjärna favoriter. Dölj övningar du inte vill få slumpade.</p>
+          <ul className="mt-4 space-y-2">
+            {EXERCISES.map((exercise) => {
+              const favorite = state.preferences.favoriteIds.includes(exercise.id);
+              const blocked = state.preferences.blockedIds.includes(exercise.id);
+              return (
+                <li key={exercise.id} className="flex items-center gap-2 rounded-2xl bg-secondary/50 p-3">
+                  <span className="min-w-0 flex-1 truncate text-sm">{exercise.name}</span>
+                  <button onClick={() => setState((s) => toggleFavorite(s, exercise.id))} className={`flex h-8 w-8 items-center justify-center rounded-full ${favorite ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`} aria-label="Favorit">
+                    <Star className="h-4 w-4" />
+                  </button>
+                  <button onClick={() => setState((s) => toggleBlocked(s, exercise.id))} className={`flex h-8 w-8 items-center justify-center rounded-full ${blocked ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`} aria-label="Dölj">
+                    <EyeOff className="h-4 w-4" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+
+        <p className="mt-8 text-center text-xs text-muted-foreground">Små steg. Starkare varje dag.</p>
       </div>
     </div>
   );
