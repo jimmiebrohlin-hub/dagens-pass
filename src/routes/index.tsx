@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { Flame, Target, Hash, BarChart3, Settings } from "lucide-react";
+import { CheckCircle2, Flame, Target, Hash, BarChart3, Settings } from "lucide-react";
 import { useAppState, computeStreak, weekCount, todayISO } from "@/lib/storage";
 import { exerciseDose, pickDailyThree } from "@/lib/exercises";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
@@ -26,6 +26,7 @@ function Index() {
   const goal = 3;
   const favorites = state.preferences.favoriteIds.length;
   const hidden = state.preferences.blockedIds.length;
+  const dailyDoneToday = state.sessions.some((session) => session.date === today && session.mode === "dagens3");
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -45,13 +46,27 @@ function Index() {
           </div>
         </header>
 
-        <section className="mb-4 rounded-3xl bg-card p-6 shadow-sm ring-1 ring-border/60">
+        <section className={`mb-4 rounded-3xl bg-card p-6 shadow-sm ring-1 ${dailyDoneToday ? "ring-primary/30" : "ring-border/60"}`}>
           <div className="flex items-center justify-between">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Idag</p>
             <p className="text-xs text-muted-foreground">2–10 min</p>
           </div>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight">Dagens 3</h2>
-          <p className="mt-1 text-sm text-muted-foreground">En övning för ben, en för överkropp och en för core.</p>
+          <div className="mt-2 flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-3xl font-semibold tracking-tight">Dagens 3</h2>
+              <p className="mt-1 text-sm text-muted-foreground">En övning för ben, en för överkropp och en för core.</p>
+            </div>
+            {dailyDoneToday && (
+              <div className="flex shrink-0 items-center gap-1 rounded-full bg-primary/15 px-3 py-1.5 text-xs font-medium">
+                <CheckCircle2 className="h-4 w-4" /> Klart
+              </div>
+            )}
+          </div>
+          {dailyDoneToday && (
+            <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">
+              Dagens 3 är redan sparat idag. Du kan ändå göra passet igen om du vill.
+            </p>
+          )}
           <ul className="mt-4 space-y-2">
             {daily.map((e, i) => (
               <li key={e.id} className="flex items-center gap-3 text-[15px]">
@@ -62,7 +77,7 @@ function Index() {
             ))}
           </ul>
           <Link to="/workout" search={{ mode: "dagens3" }} className="mt-6 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-base font-medium text-primary-foreground shadow-sm transition active:scale-[0.99]">
-            Starta dagens 3
+            {dailyDoneToday ? "Gör igen" : "Starta dagens 3"}
           </Link>
         </section>
 
