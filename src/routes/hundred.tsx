@@ -3,13 +3,14 @@ import { useState } from "react";
 import { ArrowLeft, Check } from "lucide-react";
 import { EXERCISES, getExercise } from "@/lib/exercises";
 import { useAppState, markCompleted } from "@/lib/storage";
+import { APP_NAME } from "@/lib/version";
 
 const GOAL = 102;
 const SETS = 3;
 const START_REPS = 8;
 
 export const Route = createFileRoute("/hundred")({
-  head: () => ({ meta: [{ title: "100 reps — Trean" }] }),
+  head: () => ({ meta: [{ title: `100 reps — ${APP_NAME}` }] }),
   component: HundredPage,
 });
 
