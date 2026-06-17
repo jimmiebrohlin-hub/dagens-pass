@@ -57,11 +57,21 @@ function unique(ids: string[]): string[] {
   return Array.from(new Set(ids));
 }
 
+export function defaultState(): AppState {
+  return {
+    completedDates: [],
+    sessions: [],
+    hundred: {},
+    reminder: { ...DEFAULT_REMINDER },
+    preferences: { ...DEFAULT_PREFERENCES, favoriteIds: [], blockedIds: [] },
+  };
+}
+
 export function loadState(): AppState {
-  if (typeof window === "undefined") return DEFAULT;
+  if (typeof window === "undefined") return defaultState();
   try {
     const raw = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY);
-    if (!raw) return DEFAULT;
+    if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
     const prefs = parsed.preferences ?? {};
     return {
@@ -77,7 +87,7 @@ export function loadState(): AppState {
       },
     };
   } catch {
-    return DEFAULT;
+    return defaultState();
   }
 }
 
@@ -87,8 +97,86 @@ export function saveState(s: AppState) {
   window.dispatchEvent(new CustomEvent(STATE_EVENT));
 }
 
+export function clearSavedState(): AppState {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(KEY);
+    localStorage.removeItem(LEGACY_KEY);
+    window.dispatchEvent(new CustomEvent(STATE_EVENT));
+  }
+  return defaultState();
+}
+
+export function createSampleState(): AppState {
+  const now = new Date();
+  const daysAgo = (days: number) => {
+    const d = new Date(now);
+    d.setDate(now.getDate() - days);
+    return d;
+  };
+  const toDate = (d: Date) => todayISO(d);
+  const toTime = (d: Date) => d.toISOString();
+  const dates = [0, 1, 3, 5].map((days) => toDate(daysAgo(days))).sort();
+
+  return {
+    completedDates: dates,
+    reminder: { enabled: true, time: "08:00" },
+    preferences: { favoriteIds: ["knaboj", "hoftlyft"], blockedIds: [] },
+    hundred: {
+      knaboj: { reps: 14 },
+      armhavningar: { reps: 9 },
+      situps: { reps: 12 },
+    },
+    sessions: [
+      {
+        id: `${toDate(daysAgo(5))}-dagens3-sample`,
+        date: toDate(daysAgo(5)),
+        completedAt: toTime(daysAgo(5)),
+        mode: "dagens3",
+        exercises: [
+          { id: "knaboj", name: "Knäböj", status: "done" },
+          { id: "armhavningar", name: "Armhävningar", status: "done" },
+          { id: "planka", name: "Planka", status: "done" },
+        ],
+      },
+      {
+        id: `${toDate(daysAgo(3))}-hundred-sample`,
+        date: toDate(daysAgo(3)),
+        completedAt: toTime(daysAgo(3)),
+        mode: "hundred",
+        exercises: [{ id: "knaboj", name: "Knäböj", status: "done" }],
+        feedback: "medel",
+        totalReps: 36,
+      },
+      {
+        id: `${toDate(daysAgo(1))}-halvt-sample`,
+        date: toDate(daysAgo(1)),
+        completedAt: toTime(daysAgo(1)),
+        mode: "halvt",
+        exercises: [
+          { id: "utfall", name: "Utfall", status: "done" },
+          { id: "bankdips", name: "Bänkdips", status: "done" },
+          { id: "rygglyft", name: "Rygglyft", status: "done" },
+          { id: "hoftlyft", name: "Höftlyft", status: "skipped" },
+          { id: "benlyft", name: "Benlyft", status: "done" },
+        ],
+      },
+      {
+        id: `${toDate(daysAgo(0))}-dagens3-sample`,
+        date: toDate(daysAgo(0)),
+        completedAt: toTime(daysAgo(0)),
+        mode: "dagens3",
+        exercises: [
+          { id: "hoftlyft", name: "Höftlyft", status: "done" },
+          { id: "bankdips", name: "Bänkdips", status: "done" },
+          { id: "situps", name: "Sit-ups", status: "done" },
+        ],
+      },
+    ],
+  };
+}
+
 export function useAppState(): [AppState, (updater: (s: AppState) => AppState) => void] {
-  const [state, setState] = useState<AppState>(DEFAULT);
+  const [state, setState] = useState<AppState>(defaultState());
   useEffect(() => {
     setState(loadState());
     const h = () => setState(loadState());
