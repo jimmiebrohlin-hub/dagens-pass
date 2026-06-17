@@ -1,57 +1,220 @@
 export type ExerciseKind = "reps" | "time" | "side";
+export type MuscleGroup = "lower" | "upper" | "core";
 
 export interface Exercise {
   id: string;
   name: string;
   kind: ExerciseKind;
+  muscleGroup: MuscleGroup;
   sets: number;
   reps?: number;
   seconds?: number;
   instruction: string;
+  easier?: string;
+  harder?: string;
   hundredEligible: boolean;
 }
 
 export const EXERCISES: Exercise[] = [
-  { id: "knaboj", name: "Knäböj", kind: "reps", sets: 3, reps: 12, instruction: "Stå höftbrett, sänk höften bakåt och håll knäna över tårna.", hundredEligible: true },
-  { id: "utfall", name: "Utfall", kind: "side", sets: 3, reps: 10, instruction: "Kliv fram, sänk bakre knät mot golvet. 10 per ben.", hundredEligible: true },
-  { id: "stepup", name: "Step-up", kind: "side", sets: 3, reps: 10, instruction: "Kliv upp på en stol eller pall, växla ben. 10 per ben.", hundredEligible: true },
-  { id: "hoftlyft", name: "Höftlyft", kind: "reps", sets: 3, reps: 15, instruction: "Ligg på rygg, fötter i golvet, lyft höften högt och kläm rumpan.", hundredEligible: true },
-  { id: "jagarvila", name: "Jägarvila", kind: "time", sets: 3, seconds: 30, instruction: "Sitt mot vägg med 90 graders knävinkel. Håll positionen.", hundredEligible: false },
-  { id: "armhavningar", name: "Armhävningar", kind: "reps", sets: 3, reps: 10, instruction: "Raka armar, kroppen rak. Sänk bröstet mot golvet.", hundredEligible: true },
-  { id: "bankdips", name: "Bänkdips", kind: "reps", sets: 3, reps: 10, instruction: "Händer på stol bakom dig, sänk höften mot golvet med böjda armar.", hundredEligible: true },
-  { id: "rygglyft", name: "Rygglyft", kind: "reps", sets: 3, reps: 12, instruction: "Ligg på mage, lyft bröst och armar svagt från golvet.", hundredEligible: true },
-  { id: "planka", name: "Planka", kind: "time", sets: 3, seconds: 30, instruction: "Underarmarna i golvet, kroppen rak från huvud till häl.", hundredEligible: false },
-  { id: "situps", name: "Sit-ups", kind: "reps", sets: 3, reps: 15, instruction: "Ligg på rygg, böjda knän, kom upp utan att rycka i nacken.", hundredEligible: true },
-  { id: "benlyft", name: "Benlyft", kind: "reps", sets: 3, reps: 12, instruction: "Ligg på rygg, raka ben, lyft mot taket och sänk långsamt.", hundredEligible: true },
-  { id: "spindelplanka", name: "Spindelmannen-planka", kind: "side", sets: 3, reps: 10, instruction: "Från planka, dra knä mot armbåge växelvis. 10 per sida.", hundredEligible: false },
+  {
+    id: "knaboj",
+    name: "Knäböj",
+    kind: "reps",
+    muscleGroup: "lower",
+    sets: 3,
+    reps: 12,
+    instruction: "Stå höftbrett. Sänk höften bakåt som mot en stol och håll knäna i linje med tårna.",
+    easier: "Gör rörelsen mot en stol och vänd när du nuddar sitsen.",
+    harder: "Gör långsammare tempo eller lägg till ett litet skutt.",
+    hundredEligible: true,
+  },
+  {
+    id: "utfall",
+    name: "Utfall",
+    kind: "side",
+    muscleGroup: "lower",
+    sets: 3,
+    reps: 10,
+    instruction: "Kliv fram, sänk bakre knät mot golvet och tryck dig kontrollerat upp igen.",
+    easier: "Gör kortare steg eller håll i en vägg/stol för balans.",
+    harder: "Gör långsamma repetitioner eller växla ben utan paus.",
+    hundredEligible: true,
+  },
+  {
+    id: "stepup",
+    name: "Step-up",
+    kind: "side",
+    muscleGroup: "lower",
+    sets: 3,
+    reps: 10,
+    instruction: "Kliv upp på en stabil stol eller pall. Tryck genom hela foten och växla ben.",
+    easier: "Använd en lägre höjd.",
+    harder: "Sänk långsamt tillbaka foten till golvet.",
+    hundredEligible: true,
+  },
+  {
+    id: "hoftlyft",
+    name: "Höftlyft",
+    kind: "reps",
+    muscleGroup: "lower",
+    sets: 3,
+    reps: 15,
+    instruction: "Ligg på rygg med fötterna i golvet. Lyft höften högt och spänn rumpan på toppen.",
+    easier: "Gör färre reps och vila längre mellan set.",
+    harder: "Gör enbens-höftlyft.",
+    hundredEligible: true,
+  },
+  {
+    id: "jagarvila",
+    name: "Jägarvila",
+    kind: "time",
+    muscleGroup: "lower",
+    sets: 3,
+    seconds: 30,
+    instruction: "Sitt mot vägg med ryggen rak och knäna nära 90 grader. Håll positionen.",
+    easier: "Sitt lite högre upp på väggen.",
+    harder: "Öka tiden eller håll armarna framåt.",
+    hundredEligible: false,
+  },
+  {
+    id: "armhavningar",
+    name: "Armhävningar",
+    kind: "reps",
+    muscleGroup: "upper",
+    sets: 3,
+    reps: 10,
+    instruction: "Håll kroppen rak. Sänk bröstet kontrollerat mot golvet och pressa upp igen.",
+    easier: "Gör armhävningar mot knä eller mot ett bord.",
+    harder: "Gör långsammare tempo eller pausa i botten.",
+    hundredEligible: true,
+  },
+  {
+    id: "bankdips",
+    name: "Bänkdips",
+    kind: "reps",
+    muscleGroup: "upper",
+    sets: 3,
+    reps: 10,
+    instruction: "Ha händerna på en stol bakom dig. Sänk höften genom att böja armarna och pressa upp igen.",
+    easier: "Ha fötterna närmare kroppen.",
+    harder: "Sträck benen längre bort från kroppen.",
+    hundredEligible: true,
+  },
+  {
+    id: "rygglyft",
+    name: "Rygglyft",
+    kind: "reps",
+    muscleGroup: "core",
+    sets: 3,
+    reps: 12,
+    instruction: "Ligg på mage. Lyft bröst och armar lätt från golvet och sänk kontrollerat.",
+    easier: "Lyft bara bröstet lite grann.",
+    harder: "Håll toppen i två sekunder.",
+    hundredEligible: true,
+  },
+  {
+    id: "planka",
+    name: "Planka",
+    kind: "time",
+    muscleGroup: "core",
+    sets: 3,
+    seconds: 30,
+    instruction: "Stå på underarmarna. Håll kroppen rak från huvud till häl och spänn magen.",
+    easier: "Sätt knäna i golvet.",
+    harder: "Öka tiden eller lyft en fot lätt från golvet.",
+    hundredEligible: false,
+  },
+  {
+    id: "situps",
+    name: "Sit-ups",
+    kind: "reps",
+    muscleGroup: "core",
+    sets: 3,
+    reps: 15,
+    instruction: "Ligg på rygg med böjda knän. Kom upp kontrollerat utan att rycka i nacken.",
+    easier: "Gör crunches med kortare rörelse.",
+    harder: "Sänk dig långsamt tillbaka.",
+    hundredEligible: true,
+  },
+  {
+    id: "benlyft",
+    name: "Benlyft",
+    kind: "reps",
+    muscleGroup: "core",
+    sets: 3,
+    reps: 12,
+    instruction: "Ligg på rygg. Lyft benen mot taket och sänk långsamt utan att tappa svanken.",
+    easier: "Böj knäna lite och gör kortare rörelse.",
+    harder: "Sänk benen långsammare.",
+    hundredEligible: true,
+  },
+  {
+    id: "spindelplanka",
+    name: "Spindelmannen-planka",
+    kind: "side",
+    muscleGroup: "core",
+    sets: 3,
+    reps: 10,
+    instruction: "Från planka. Dra knä mot armbåge växelvis och håll kroppen stabil.",
+    easier: "Gör rörelsen långsamt med knäna i golvet mellan reps.",
+    harder: "Håll högt tempo utan att tappa kontrollen.",
+    hundredEligible: false,
+  },
 ];
 
 export const getExercise = (id: string) => EXERCISES.find((e) => e.id === id);
 
-export function pickDailyThree(seed: string): Exercise[] {
-  // deterministic per seed (date)
+function seededNumber(seed: string): number {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  const pool = [...EXERCISES];
-  const picked: Exercise[] = [];
-  for (let i = 0; i < 3 && pool.length; i++) {
-    h = (h * 1103515245 + 12345) >>> 0;
-    const idx = h % pool.length;
-    picked.push(pool.splice(idx, 1)[0]);
-  }
-  return picked;
+  return h;
+}
+
+function takeSeeded<T extends { id: string }>(items: T[], seed: string, avoidIds: string[] = []): T | undefined {
+  const preferred = items.filter((item) => !avoidIds.includes(item.id));
+  const pool = preferred.length ? preferred : items;
+  if (!pool.length) return undefined;
+  const idx = seededNumber(`${seed}:${pool.map((p) => p.id).join("|")}`) % pool.length;
+  return pool[idx];
+}
+
+export function pickDailyThree(seed: string, avoidIds: string[] = []): Exercise[] {
+  const groups: MuscleGroup[] = ["lower", "upper", "core"];
+  return groups
+    .map((group, index) =>
+      takeSeeded(
+        EXERCISES.filter((e) => e.muscleGroup === group),
+        `${seed}:daily:${group}:${index}`,
+        avoidIds,
+      ),
+    )
+    .filter(Boolean) as Exercise[];
 }
 
 export function pickHalf(seed: string): Exercise[] {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 17 + seed.charCodeAt(i)) >>> 0;
-  const pool = [...EXERCISES];
+  const lower = EXERCISES.filter((e) => e.muscleGroup === "lower");
+  const upper = EXERCISES.filter((e) => e.muscleGroup === "upper");
+  const core = EXERCISES.filter((e) => e.muscleGroup === "core");
+
   const picked: Exercise[] = [];
-  for (let i = 0; i < 5 && pool.length; i++) {
-    h = (h * 1103515245 + 12345) >>> 0;
-    const idx = h % pool.length;
-    const ex = pool.splice(idx, 1)[0];
-    picked.push({ ...ex, sets: 2 });
+  const plan: Array<[Exercise[], string]> = [
+    [lower, "lower-1"],
+    [upper, "upper-1"],
+    [core, "core-1"],
+    [lower, "lower-2"],
+    [core, "core-2"],
+  ];
+
+  for (const [pool, suffix] of plan) {
+    const exercise = takeSeeded(pool, `${seed}:half:${suffix}`, picked.map((e) => e.id));
+    if (exercise) picked.push({ ...exercise, sets: 2 });
   }
+
   return picked;
+}
+
+export function exerciseDose(exercise: Exercise): string {
+  if (exercise.kind === "time") return `${exercise.sets} × ${exercise.seconds} sek`;
+  if (exercise.kind === "side") return `${exercise.sets} × ${exercise.reps} per sida`;
+  return `${exercise.sets} × ${exercise.reps}`;
 }
