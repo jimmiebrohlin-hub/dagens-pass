@@ -18,12 +18,12 @@ export const Route = createFileRoute("/workout")({
 function WorkoutPage() {
   const { mode } = Route.useSearch();
   const navigate = useNavigate();
-  const [, setState] = useAppState();
+  const [state, setState] = useAppState();
   const today = todayISO();
 
   const exercises = useMemo<Exercise[]>(
-    () => (mode === "halvt" ? pickHalf(today + "h") : pickDailyThree(today)),
-    [mode, today],
+    () => (mode === "halvt" ? pickHalf(today + "h", state.preferences) : pickDailyThree(today, state.preferences)),
+    [mode, today, state.preferences],
   );
 
   const [idx, setIdx] = useState(0);
@@ -99,37 +99,18 @@ function WorkoutPage() {
             </div>
 
             <div className="mt-6 grid grid-cols-[1fr_auto] gap-3">
-              <button
-                onClick={() => next(true)}
-                className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground shadow-sm active:scale-[0.99]"
-              >
+              <button onClick={() => next(true)} className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground shadow-sm active:scale-[0.99]">
                 <Check className="h-4 w-4" /> Klar
               </button>
-              <button
-                onClick={() => next(false)}
-                className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-secondary px-5 text-sm font-medium text-secondary-foreground active:scale-[0.99]"
-              >
+              <button onClick={() => next(false)} className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-secondary px-5 text-sm font-medium text-secondary-foreground active:scale-[0.99]">
                 <SkipForward className="h-4 w-4" /> Hoppa
               </button>
             </div>
 
             <ul className="mt-8 space-y-2">
               {exercises.map((e, i) => (
-                <li
-                  key={e.id}
-                  className={`flex items-center gap-3 text-sm ${
-                    i === idx ? "text-foreground" : "text-muted-foreground"
-                  }`}
-                >
-                  <span
-                    className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
-                      done[i]
-                        ? "bg-primary text-primary-foreground"
-                        : i === idx
-                          ? "bg-primary/20"
-                          : "bg-muted"
-                    }`}
-                  >
+                <li key={e.id} className={`flex items-center gap-3 text-sm ${i === idx ? "text-foreground" : "text-muted-foreground"}`}>
+                  <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${done[i] ? "bg-primary text-primary-foreground" : i === idx ? "bg-primary/20" : "bg-muted"}`}>
                     {done[i] ? "✓" : i + 1}
                   </span>
                   <span className="truncate">{e.name}</span>
@@ -143,13 +124,8 @@ function WorkoutPage() {
               <Check className="h-6 w-6 text-primary-foreground/80" />
             </div>
             <h2 className="mt-4 text-2xl font-semibold tracking-tight">Bra jobbat</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Passet är klart. Streak och veckans mål uppdateras.
-            </p>
-            <button
-              onClick={finish}
-              className="mt-6 h-12 w-full rounded-2xl bg-primary text-base font-medium text-primary-foreground"
-            >
+            <p className="mt-1 text-sm text-muted-foreground">Passet är klart. Streak och veckans mål uppdateras.</p>
+            <button onClick={finish} className="mt-6 h-12 w-full rounded-2xl bg-primary text-base font-medium text-primary-foreground">
               Spara & avsluta
             </button>
           </div>
