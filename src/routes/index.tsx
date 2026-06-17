@@ -1,17 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { Flame, Target, Hash, ChevronRight } from "lucide-react";
+import { Flame, Target, Hash } from "lucide-react";
 import { useAppState, computeStreak, weekCount, todayISO } from "@/lib/storage";
-import { pickDailyThree } from "@/lib/exercises";
+import { exerciseDose, pickDailyThree } from "@/lib/exercises";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: `${APP_NAME} — Hemmaträning på 10 minuter` },
-      { name: "description", content: "Enkel svensk hemmaträning. Dagens 3 övningar, streak och vägen till 100 reps." },
-      { property: "og:title", content: `${APP_NAME} — Hemmaträning` },
-      { property: "og:description", content: "Dagens 3 övningar. Bygg streak. Nå 100 reps." },
+      { title: `${APP_NAME} — Små steg. Starkare varje dag.` },
+      { name: "description", content: "Enkel svensk hemmaträning. Dagens 3 övningar och vägen till 100 reps." },
+      { property: "og:title", content: APP_NAME },
+      { property: "og:description", content: "Dagens 3 övningar. Bygg en lugn vana. Nå 100 reps." },
     ],
   }),
   component: Index,
@@ -36,7 +36,7 @@ function Index() {
                 {APP_VERSION}
               </span>
             </div>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight">Hej, redo?</h1>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight">Små steg idag?</h1>
           </div>
           <div className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-sm">
             <Flame className="h-4 w-4 text-primary" />
@@ -48,9 +48,12 @@ function Index() {
         <section className="mb-4 rounded-3xl bg-card p-6 shadow-sm ring-1 ring-border/60">
           <div className="flex items-center justify-between">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Idag</p>
-            <p className="text-xs text-muted-foreground">~10 min</p>
+            <p className="text-xs text-muted-foreground">2–10 min</p>
           </div>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight">Dagens 3</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            En övning för ben, en för överkropp och en för core.
+          </p>
           <ul className="mt-4 space-y-2">
             {daily.map((e, i) => (
               <li key={e.id} className="flex items-center gap-3 text-[15px]">
@@ -58,8 +61,8 @@ function Index() {
                   {i + 1}
                 </span>
                 <span className="truncate">{e.name}</span>
-                <span className="ml-auto text-xs text-muted-foreground">
-                  {e.kind === "time" ? `${e.sets}×${e.seconds}s` : `${e.sets}×${e.reps}`}
+                <span className="ml-auto whitespace-nowrap text-xs text-muted-foreground">
+                  {exerciseDose(e)}
                 </span>
               </li>
             ))}
@@ -116,7 +119,7 @@ function Index() {
         </section>
 
         <p className="mt-8 text-center text-xs text-muted-foreground">
-          En lugn vana. Ett pass i taget.
+          Små steg. Starkare varje dag.
         </p>
       </div>
     </div>
