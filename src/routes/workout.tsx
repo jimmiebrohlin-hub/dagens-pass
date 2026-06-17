@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ArrowLeft, Check, SkipForward } from "lucide-react";
-import { pickDailyThree, pickHalf, type Exercise } from "@/lib/exercises";
+import { exerciseDose, pickDailyThree, pickHalf, type Exercise } from "@/lib/exercises";
 import { todayISO, useAppState, markCompleted } from "@/lib/storage";
+import { APP_NAME } from "@/lib/version";
 
 type Mode = "dagens3" | "halvt";
 
@@ -10,7 +11,7 @@ export const Route = createFileRoute("/workout")({
   validateSearch: (s: Record<string, unknown>): { mode: Mode } => ({
     mode: s.mode === "halvt" ? "halvt" : "dagens3",
   }),
-  head: () => ({ meta: [{ title: "Pass — Trean" }] }),
+  head: () => ({ meta: [{ title: `Pass — ${APP_NAME}` }] }),
   component: WorkoutPage,
 });
 
@@ -65,16 +66,8 @@ function WorkoutPage() {
           <>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight">{current.name}</h1>
             <div className="mt-6 rounded-3xl bg-card p-6 ring-1 ring-border/60">
-              <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-semibold tracking-tight">{current.sets}</span>
-                <span className="text-muted-foreground">set ×</span>
-                <span className="text-5xl font-semibold tracking-tight">
-                  {current.kind === "time" ? `${current.seconds}s` : current.reps}
-                </span>
-              </div>
-              {current.kind === "side" && (
-                <p className="mt-1 text-xs text-muted-foreground">per sida</p>
-              )}
+              <p className="text-sm text-muted-foreground">Gör</p>
+              <p className="mt-1 text-5xl font-semibold tracking-tight">{exerciseDose(current)}</p>
               <p className="mt-5 text-[15px] leading-relaxed text-muted-foreground">
                 {current.instruction}
               </p>
