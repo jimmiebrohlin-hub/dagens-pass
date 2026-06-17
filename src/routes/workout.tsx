@@ -30,6 +30,8 @@ function WorkoutPage() {
   const [done, setDone] = useState<boolean[]>(() => exercises.map(() => false));
   const current = exercises[idx];
   const finished = idx >= exercises.length;
+  const title = mode === "halvt" ? "Halvt pass" : "Dagens 3";
+  const dailyDoneToday = mode === "dagens3" && state.sessions.some((session) => session.date === today && session.mode === "dagens3");
 
   function next(completed: boolean) {
     setDone((d) => {
@@ -54,8 +56,6 @@ function WorkoutPage() {
     navigate({ to: "/" });
   }
 
-  const title = mode === "halvt" ? "Halvt pass" : "Dagens 3";
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-md px-5 pb-16 pt-8">
@@ -70,6 +70,11 @@ function WorkoutPage() {
         </header>
 
         <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
+        {dailyDoneToday && !finished && (
+          <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">
+            Dagens 3 är redan sparat idag. Det här sparas som ett extra pass.
+          </p>
+        )}
 
         {!finished && current ? (
           <>
@@ -124,7 +129,9 @@ function WorkoutPage() {
               <Check className="h-6 w-6 text-primary-foreground/80" />
             </div>
             <h2 className="mt-4 text-2xl font-semibold tracking-tight">Bra jobbat</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Passet är klart. Streak och veckans mål uppdateras.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {dailyDoneToday ? "Extra passet sparas i historiken. Streak och veckomål räknas fortfarande per dag." : "Passet är klart. Streak och veckans mål uppdateras."}
+            </p>
             <button onClick={finish} className="mt-6 h-12 w-full rounded-2xl bg-primary text-base font-medium text-primary-foreground">
               Spara & avsluta
             </button>
