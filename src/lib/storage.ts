@@ -5,14 +5,17 @@ export interface AppState {
   hundred: Record<string, { reps: number }>; // per exercise current reps per set
 }
 
-const KEY = "trean-app-state-v1";
+const KEY = "vardagsstyrka-app-state-v1";
+const LEGACY_KEY = "trean-app-state-v1";
+const STATE_EVENT = "vardagsstyrka:state";
+const LEGACY_STATE_EVENT = "trean:state";
 
 const DEFAULT: AppState = { completedDates: [], hundred: {} };
 
 export function loadState(): AppState {
   if (typeof window === "undefined") return DEFAULT;
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY);
     if (!raw) return DEFAULT;
     return { ...DEFAULT, ...JSON.parse(raw) };
   } catch {
@@ -23,7 +26,7 @@ export function loadState(): AppState {
 export function saveState(s: AppState) {
   if (typeof window === "undefined") return;
   localStorage.setItem(KEY, JSON.stringify(s));
-  window.dispatchEvent(new CustomEvent("trean:state"));
+  window.dispatchEvent(new CustomEvent(STATE_EVENT));
 }
 
 export function useAppState(): [AppState, (updater: (s: AppState) => AppState) => void] {
@@ -31,10 +34,12 @@ export function useAppState(): [AppState, (updater: (s: AppState) => AppState) =
   useEffect(() => {
     setState(loadState());
     const h = () => setState(loadState());
-    window.addEventListener("trean:state", h);
+    window.addEventListener(STATE_EVENT, h);
+    window.addEventListener(LEGACY_STATE_EVENT, h);
     window.addEventListener("storage", h);
     return () => {
-      window.removeEventListener("trean:state", h);
+      window.removeEventListener(STATE_EVENT, h);
+      window.removeEventListener(LEGACY_STATE_EVENT, h);
       window.removeEventListener("storage", h);
     };
   }, []);
@@ -65,7 +70,7 @@ export function computeStreak(dates: string[]): number {
   const set = new Set(dates);
   let streak = 0;
   const d = new Date();
-  // If today not done, streak starts from yesterday if done
+  // If today is not done, streak starts from yesterday if yesterday is done.
   if (!set.has(todayISO(d))) {
     d.setDate(d.getDate() - 1);
   }
