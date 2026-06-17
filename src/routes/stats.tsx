@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Hash } from "lucide-react";
+import { ArrowLeft, Hash, Database, Trash2 } from "lucide-react";
 import { EXERCISES } from "@/lib/exercises";
-import { useAppState, weekCount } from "@/lib/storage";
+import { useAppState, weekCount, createSampleState, defaultState } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
 
 const GOAL = 102;
@@ -24,7 +24,7 @@ function formatDate(value: string) {
 }
 
 function StatsPage() {
-  const [state] = useAppState();
+  const [state, setState] = useAppState();
   const week = weekCount(state.completedDates);
   const total = state.sessions.length;
   const latest = [...state.sessions]
@@ -36,6 +36,18 @@ function StatsPage() {
     const percent = Math.min(100, Math.round((totalReps / GOAL) * 100));
     return { exercise, reps, totalReps, percent };
   });
+
+  function resetAll() {
+    const ok = window.confirm("Vill du rensa all lokal data? Historik, favoriter och 100 reps-progression tas bort.");
+    if (!ok) return;
+    setState(() => defaultState());
+  }
+
+  function addSampleData() {
+    const ok = total > 0 ? window.confirm("Vill du ersätta nuvarande lokala data med testdata?") : true;
+    if (!ok) return;
+    setState(() => createSampleState());
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -113,6 +125,21 @@ function StatsPage() {
               </li>
             ))}
           </ul>
+        </section>
+
+        <section className="mt-6 rounded-2xl bg-card p-5 ring-1 ring-border/60">
+          <p className="text-sm font-medium">Test och felsökning</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            För utveckling. Använd testdata för att se historik och Road to 100 utan att träna först.
+          </p>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <button onClick={addSampleData} className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99]">
+              <Database className="h-4 w-4" /> Testdata
+            </button>
+            <button onClick={resetAll} className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99]">
+              <Trash2 className="h-4 w-4" /> Rensa
+            </button>
+          </div>
         </section>
       </div>
     </div>
