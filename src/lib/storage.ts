@@ -25,11 +25,17 @@ export interface ReminderSettings {
   time: string;
 }
 
+export interface ExercisePreferences {
+  favoriteIds: string[];
+  blockedIds: string[];
+}
+
 export interface AppState {
   completedDates: string[];
   sessions: WorkoutSession[];
   hundred: Record<string, { reps: number }>;
   reminder: ReminderSettings;
+  preferences: ExercisePreferences;
 }
 
 const KEY = "vardagsstyrka-app-state-v1";
@@ -38,12 +44,18 @@ const STATE_EVENT = "vardagsstyrka:state";
 const LEGACY_STATE_EVENT = "trean:state";
 
 const DEFAULT_REMINDER: ReminderSettings = { enabled: false, time: "08:00" };
+const DEFAULT_PREFERENCES: ExercisePreferences = { favoriteIds: [], blockedIds: [] };
 const DEFAULT: AppState = {
   completedDates: [],
   sessions: [],
   hundred: {},
   reminder: DEFAULT_REMINDER,
+  preferences: DEFAULT_PREFERENCES,
 };
+
+function unique(ids: string[]): string[] {
+  return Array.from(new Set(ids));
+}
 
 export function loadState(): AppState {
   if (typeof window === "undefined") return DEFAULT;
@@ -51,6 +63,7 @@ export function loadState(): AppState {
     const raw = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY);
     if (!raw) return DEFAULT;
     const parsed = JSON.parse(raw);
+    const prefs = parsed.preferences ?? {};
     return {
       ...DEFAULT,
       ...parsed,
@@ -58,6 +71,10 @@ export function loadState(): AppState {
       sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
       hundred: parsed.hundred ?? {},
       reminder: { ...DEFAULT_REMINDER, ...(parsed.reminder ?? {}) },
+      preferences: {
+        favoriteIds: Array.isArray(prefs.favoriteIds) ? unique(prefs.favoriteIds) : [],
+        blockedIds: Array.isArray(prefs.blockedIds) ? unique(prefs.blockedIds) : [],
+      },
     };
   } catch {
     return DEFAULT;
@@ -110,6 +127,42 @@ export function updateReminder(s: AppState, reminder: Partial<ReminderSettings>)
   return {
     ...s,
     reminder: { ...s.reminder, ...reminder },
+  };
+}
+
+export function toggleFavorite(s: AppState, exerciseId: string): AppState {
+  const favoriteIds = s.preferences.favoriteIds.includes(exerciseId)
+    ? s.preferences.favoriteIds.filter((id) => id !== exerciseId)
+    : unique([...s.preferences.favoriteIds, exerciseId]);
+  return {
+    ...s,
+    preferences: {
+      favoriteIds,
+      blockedIds: s.preferences.blockedIds.filter((id) => id !== exerciseId),
+    },
+  };
+}
+
+export function toggleBlocked(s: AppState, exerciseId: string): AppState {
+  const blockedIds = s.preferences.blockedIds.includes(exerciseId)
+    ? s.preferences.blockedIds.filter((id) => id !== exerciseId)
+    : unique([...s.preferences.blockedIds, exerciseId]);
+  return {
+    ...s,
+    preferences: {
+      favoriteIds: s.preferences.favoriteIds.filter((id) => id !== exerciseId),
+      blockedIds,
+    },
+  };
+}
+
+export function clearExercisePreference(s: AppState, exerciseId: string): AppState {
+  return {
+    ...s,
+    preferences: {
+      favoriteIds: s.preferences.favoriteIds.filter((id) => id !== exerciseId),
+      blockedIds: s.preferences.blockedIds.filter((id) => id !== exerciseId),
+    },
   };
 }
 
