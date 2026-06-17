@@ -3,13 +3,14 @@ import { Link } from "@tanstack/react-router";
 import { Flame, Target, Hash, ChevronRight } from "lucide-react";
 import { useAppState, computeStreak, weekCount, todayISO } from "@/lib/storage";
 import { pickDailyThree } from "@/lib/exercises";
+import { APP_NAME, APP_VERSION } from "@/lib/version";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Trean — Hemmaträning på 10 minuter" },
+      { title: `${APP_NAME} — Hemmaträning på 10 minuter` },
       { name: "description", content: "Enkel svensk hemmaträning. Dagens 3 övningar, streak och vägen till 100 reps." },
-      { property: "og:title", content: "Trean — Hemmaträning" },
+      { property: "og:title", content: `${APP_NAME} — Hemmaträning` },
       { property: "og:description", content: "Dagens 3 övningar. Bygg streak. Nå 100 reps." },
     ],
   }),
@@ -29,7 +30,12 @@ function Index() {
       <div className="mx-auto max-w-md px-5 pb-16 pt-10">
         <header className="mb-6 flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Trean</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{APP_NAME}</p>
+              <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                {APP_VERSION}
+              </span>
+            </div>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight">Hej, redo?</h1>
           </div>
           <div className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-sm">
