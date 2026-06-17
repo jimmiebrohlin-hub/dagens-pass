@@ -81,9 +81,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Små steg. Starkare varje dag." },
       { name: "author", content: "Vardagsstyrka" },
       { property: "og:title", content: "Vardagsstyrka" },
-      { property: "og:description", content: "Dagens 3 övningar och vägen till 100 reps." },
+      { property: "og:description", content: "Små steg. Starkare varje dag." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Vardagsstyrka" },
+      { name: "twitter:description", content: "Små steg. Starkare varje dag." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1a3e10cc-2839-419f-b951-205825b4d826/id-preview-3e869756--6306a9f9-de29-4598-baa8-005a38f9419e.lovable.app-1781674256092.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1a3e10cc-2839-419f-b951-205825b4d826/id-preview-3e869756--6306a9f9-de29-4598-baa8-005a38f9419e.lovable.app-1781674256092.png" },
     ],
     links: [
       {
