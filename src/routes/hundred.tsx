@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft, Check } from "lucide-react";
 import { EXERCISES, getExercise } from "@/lib/exercises";
-import { useAppState, markCompleted } from "@/lib/storage";
+import { useAppState, addSession, type HundredFeedback } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
 
 const GOAL = 102;
@@ -31,16 +31,24 @@ function HundredPage() {
     setPhase("do");
   }
 
-  function rate(level: "latt" | "medel" | "svart") {
+  function rate(level: HundredFeedback) {
     if (!active) return;
     const delta = level === "latt" ? 2 : level === "medel" ? 1 : 0;
     setState((s) => {
       const cur = s.hundred[active.id]?.reps ?? START_REPS;
       const next = Math.min(34, cur + delta);
-      return markCompleted({
-        ...s,
-        hundred: { ...s.hundred, [active.id]: { reps: next } },
-      });
+      return addSession(
+        {
+          ...s,
+          hundred: { ...s.hundred, [active.id]: { reps: next } },
+        },
+        {
+          mode: "hundred",
+          exercises: [{ id: active.id, name: active.name, status: "done" }],
+          feedback: level,
+          totalReps: total,
+        },
+      );
     });
     setPhase("pick");
     setActiveId(null);
