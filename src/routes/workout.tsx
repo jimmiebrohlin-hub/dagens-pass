@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, SkipForward, Timer } from "lucide-react";
+import { ArrowLeft, Check, SkipForward, Timer, Info } from "lucide-react";
 import { exerciseDose, pickDailyThree, pickHalf, type Exercise } from "@/lib/exercises";
 import { todayISO, useAppState, addSession } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
@@ -89,7 +89,12 @@ function WorkoutPage() {
 
         {!finished && current ? (
           <>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight">{current.name}</h1>
+            <div className="mt-2 flex items-start justify-between gap-3">
+              <h1 className="text-3xl font-semibold tracking-tight">{current.name}</h1>
+              <Link to="/exercise/$exerciseId" params={{ exerciseId: current.id }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground active:scale-[0.98]" aria-label="Visa övningsdetaljer">
+                <Info className="h-4 w-4" />
+              </Link>
+            </div>
             <div className="mt-6 rounded-3xl bg-card p-6 ring-1 ring-border/60">
               <p className="text-sm text-muted-foreground">Gör</p>
               <p className="mt-1 text-5xl font-semibold tracking-tight">{exerciseDose(current)}</p>
@@ -161,7 +166,9 @@ function WorkoutPage() {
                   <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${done[i] ? "bg-primary text-primary-foreground" : i === idx ? "bg-primary/20" : "bg-muted"}`}>
                     {done[i] ? "✓" : i + 1}
                   </span>
-                  <span className="truncate">{e.name}</span>
+                  <Link to="/exercise/$exerciseId" params={{ exerciseId: e.id }} className="truncate underline-offset-4 hover:underline">
+                    {e.name}
+                  </Link>
                 </li>
               ))}
             </ul>
