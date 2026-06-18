@@ -1,3 +1,5 @@
+import type { WorkoutIntensity } from "./storage";
+
 export type ExerciseKind = "reps" | "time" | "side";
 export type MuscleGroup = "lower" | "upper" | "core";
 
@@ -89,8 +91,25 @@ export function pickHalf(seed: string, options: PickOptions = {}): Exercise[] {
   return picked;
 }
 
-export function exerciseDose(exercise: Exercise): string {
-  if (exercise.kind === "time") return `${exercise.sets} × ${exercise.seconds} sek`;
-  if (exercise.kind === "side") return `${exercise.sets} × ${exercise.reps} per sida`;
-  return `${exercise.sets} × ${exercise.reps}`;
+export function intensityLabel(intensity: WorkoutIntensity): string {
+  if (intensity === "enkel") return "Enkel";
+  if (intensity === "tuff") return "Tuff";
+  return "Normal";
+}
+
+export function applyIntensity(exercise: Exercise, intensity: WorkoutIntensity = "normal"): Exercise {
+  if (intensity === "normal") return exercise;
+  const factor = intensity === "enkel" ? 0.75 : 1.25;
+  return {
+    ...exercise,
+    reps: exercise.reps ? Math.max(4, Math.round(exercise.reps * factor)) : exercise.reps,
+    seconds: exercise.seconds ? Math.max(15, Math.round((exercise.seconds * factor) / 5) * 5) : exercise.seconds,
+  };
+}
+
+export function exerciseDose(exercise: Exercise, intensity: WorkoutIntensity = "normal"): string {
+  const adjusted = applyIntensity(exercise, intensity);
+  if (adjusted.kind === "time") return `${adjusted.sets} × ${adjusted.seconds} sek`;
+  if (adjusted.kind === "side") return `${adjusted.sets} × ${adjusted.reps} per sida`;
+  return `${adjusted.sets} × ${adjusted.reps}`;
 }
