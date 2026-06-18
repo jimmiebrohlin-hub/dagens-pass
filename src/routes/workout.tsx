@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, SkipForward, Timer, Info } from "lucide-react";
-import { exerciseDose, pickDailyThree, pickHalf, type Exercise } from "@/lib/exercises";
+import { exerciseDose, intensityLabel, pickDailyThree, pickHalf, type Exercise } from "@/lib/exercises";
 import { todayISO, useAppState, addSession } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
 
@@ -80,7 +80,9 @@ function WorkoutPage() {
           <div className="w-9" />
         </header>
 
-        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
+        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+          {title} · {intensityLabel(state.intensity)}
+        </p>
         {dailyDoneToday && !finished && (
           <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">
             Dagens 3 är redan sparat idag. Det här sparas som ett extra pass.
@@ -97,7 +99,7 @@ function WorkoutPage() {
             </div>
             <div className="mt-6 rounded-3xl bg-card p-6 ring-1 ring-border/60">
               <p className="text-sm text-muted-foreground">Gör</p>
-              <p className="mt-1 text-5xl font-semibold tracking-tight">{exerciseDose(current)}</p>
+              <p className="mt-1 text-5xl font-semibold tracking-tight">{exerciseDose(current, state.intensity)}</p>
               <p className="mt-5 text-[15px] leading-relaxed text-muted-foreground">
                 {current.instruction}
               </p>
@@ -169,6 +171,7 @@ function WorkoutPage() {
                   <Link to="/exercise/$exerciseId" params={{ exerciseId: e.id }} className="truncate underline-offset-4 hover:underline">
                     {e.name}
                   </Link>
+                  <span className="ml-auto text-xs text-muted-foreground">{exerciseDose(e, state.intensity)}</span>
                 </li>
               ))}
             </ul>
