@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Vardagsstyrka icon">
+  <rect width="512" height="512" rx="116" fill="#F8F5EE"/>
+  <circle cx="256" cy="256" r="174" fill="#E7EEDC"/>
+  <path d="M160 282c28 58 77 92 122 86 45-6 77-49 76-103" fill="none" stroke="#6F8F72" stroke-width="34" stroke-linecap="round"/>
+  <path d="M158 230h196" fill="none" stroke="#6F8F72" stroke-width="34" stroke-linecap="round"/>
+  <path d="M188 198v64M324 198v64" fill="none" stroke="#6F8F72" stroke-width="28" stroke-linecap="round"/>
+  <circle cx="256" cy="145" r="22" fill="#6F8F72"/>
+</svg>
