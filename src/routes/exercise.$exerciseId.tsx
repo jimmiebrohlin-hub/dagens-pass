@@ -1,7 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Dumbbell } from "lucide-react";
-import { exerciseDose, getExercise } from "@/lib/exercises";
+import { exerciseDose, getExercise, intensityLabel } from "@/lib/exercises";
+import { useAppState, type WorkoutIntensity } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
+
+const INTENSITIES: WorkoutIntensity[] = ["enkel", "normal", "tuff"];
 
 function muscleLabel(group: string) {
   if (group === "lower") return "Ben/rumpa";
@@ -19,6 +22,7 @@ export const Route = createFileRoute("/exercise/$exerciseId")({
 
 function ExerciseDetailPage() {
   const { exerciseId } = Route.useParams();
+  const [state] = useAppState();
   const exercise = getExercise(exerciseId);
 
   if (!exercise) {
@@ -62,9 +66,22 @@ function ExerciseDetailPage() {
         </div>
 
         <section className="mt-6 rounded-3xl bg-card p-6 ring-1 ring-border/60">
-          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Standarddos</p>
-          <p className="mt-2 text-5xl font-semibold tracking-tight">{exerciseDose(exercise)}</p>
+          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Aktuell dos</p>
+          <p className="mt-2 text-5xl font-semibold tracking-tight">{exerciseDose(exercise, state.intensity)}</p>
+          <p className="mt-1 text-sm text-muted-foreground">Nivå: {intensityLabel(state.intensity)}</p>
           <p className="mt-5 text-[15px] leading-relaxed text-muted-foreground">{exercise.instruction}</p>
+        </section>
+
+        <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
+          <p className="text-sm font-medium">Dos per nivå</p>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {INTENSITIES.map((intensity) => (
+              <div key={intensity} className={`rounded-2xl p-3 ${state.intensity === intensity ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
+                <p className="text-xs font-medium">{intensityLabel(intensity)}</p>
+                <p className={`mt-1 text-xs ${state.intensity === intensity ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{exerciseDose(exercise, intensity)}</p>
+              </div>
+            ))}
+          </div>
         </section>
 
         <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
