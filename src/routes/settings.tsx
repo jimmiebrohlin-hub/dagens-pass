@@ -1,8 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Bell, Star, EyeOff, Settings, ChevronRight } from "lucide-react";
-import { EXERCISES } from "@/lib/exercises";
-import { useAppState, updateReminder, toggleFavorite, toggleBlocked } from "@/lib/storage";
+import { ArrowLeft, Bell, Star, EyeOff, Settings, ChevronRight, Gauge } from "lucide-react";
+import { EXERCISES, intensityLabel } from "@/lib/exercises";
+import { useAppState, updateReminder, toggleFavorite, toggleBlocked, updateIntensity, type WorkoutIntensity } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
+
+const INTENSITIES: Array<{ id: WorkoutIntensity; label: string; hint: string }> = [
+  { id: "enkel", label: "Enkel", hint: "Ca 25% lättare" },
+  { id: "normal", label: "Normal", hint: "Standardnivå" },
+  { id: "tuff", label: "Tuff", hint: "Ca 25% mer" },
+];
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: `Inställningar — ${APP_NAME}` }] }),
@@ -31,11 +37,38 @@ function SettingsPage() {
           </div>
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">Anpassa appen</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Påminnelse och vilka övningar som ska prioriteras.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Nivå, påminnelse och vilka övningar som ska prioriteras.</p>
           </div>
         </div>
 
         <section className="mt-6 rounded-2xl bg-card p-5 ring-1 ring-border/60">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15">
+              <Gauge className="h-4 w-4 text-primary-foreground/80" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Träningsnivå</p>
+              <p className="text-xs text-muted-foreground">Nu: {intensityLabel(state.intensity)}</p>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            {INTENSITIES.map((option) => (
+              <button
+                key={option.id}
+                onClick={() => setState((s) => updateIntensity(s, option.id))}
+                className={`rounded-2xl p-3 text-left active:scale-[0.98] ${
+                  state.intensity === option.id ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
+                }`}
+              >
+                <p className="text-sm font-medium">{option.label}</p>
+                <p className={`mt-0.5 text-[11px] ${state.intensity === option.id ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{option.hint}</p>
+              </button>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">Nivån påverkar Dagens 3 och Halvt pass. 100 reps styrs av egen progression.</p>
+        </section>
+
+        <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
           <div className="flex items-start gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15">
               <Bell className="h-4 w-4 text-primary-foreground/80" />
