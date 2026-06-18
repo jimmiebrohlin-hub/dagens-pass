@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 export type WorkoutMode = "dagens3" | "halvt" | "hundred";
 export type ExerciseStatus = "done" | "skipped";
-export type HundredFeedback = "latt" | "medel" | "svart";
+export type HundredFeedback = "latt" | "medel" | "svart" | "misslyckat";
 
 export interface WorkoutExerciseLog {
   id: string;
