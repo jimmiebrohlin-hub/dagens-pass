@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Bell, Star, EyeOff, Settings } from "lucide-react";
+import { ArrowLeft, Bell, Star, EyeOff, Settings, ChevronRight } from "lucide-react";
 import { EXERCISES } from "@/lib/exercises";
 import { useAppState, updateReminder, toggleFavorite, toggleBlocked } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
@@ -74,7 +74,7 @@ function SettingsPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-medium">Övningsval</p>
-              <p className="mt-1 text-xs text-muted-foreground">Stjärna favoriter. Dölj övningar du inte vill få slumpade.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Tryck på en övning för instruktion. Stjärna favoriter eller dölj övningar.</p>
             </div>
             <div className="whitespace-nowrap rounded-full bg-secondary px-3 py-1.5 text-xs text-muted-foreground">
               {favorites} fav · {blocked} dolda
@@ -86,12 +86,15 @@ function SettingsPage() {
               const hidden = state.preferences.blockedIds.includes(exercise.id);
               return (
                 <li key={exercise.id} className="flex items-center gap-2 rounded-2xl bg-secondary/50 p-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{exercise.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {exercise.muscleGroup === "lower" ? "Ben/rumpa" : exercise.muscleGroup === "upper" ? "Överkropp" : "Core/rygg"}
-                    </p>
-                  </div>
+                  <Link to="/exercise/$exerciseId" params={{ exerciseId: exercise.id }} className="min-w-0 flex flex-1 items-center gap-2 active:scale-[0.99]">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{exercise.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {exercise.muscleGroup === "lower" ? "Ben/rumpa" : exercise.muscleGroup === "upper" ? "Överkropp" : "Core/rygg"}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </Link>
                   <button
                     onClick={() => setState((s) => toggleFavorite(s, exercise.id))}
                     className={`flex h-9 w-9 items-center justify-center rounded-full ${
