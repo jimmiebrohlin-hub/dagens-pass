@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { CheckCircle2, Flame, Target, Hash, BarChart3, Settings } from "lucide-react";
 import { useAppState, computeStreak, weekCount, todayISO } from "@/lib/storage";
-import { exerciseDose, pickDailyThree } from "@/lib/exercises";
+import { exerciseDose, intensityLabel, pickDailyThree } from "@/lib/exercises";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
 
 export const Route = createFileRoute("/")({
@@ -49,7 +49,7 @@ function Index() {
         <section className={`mb-4 rounded-3xl bg-card p-6 shadow-sm ring-1 ${dailyDoneToday ? "ring-primary/30" : "ring-border/60"}`}>
           <div className="flex items-center justify-between">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Idag</p>
-            <p className="text-xs text-muted-foreground">2–10 min</p>
+            <p className="text-xs text-muted-foreground">{intensityLabel(state.intensity)} · 2–10 min</p>
           </div>
           <div className="mt-2 flex items-start justify-between gap-3">
             <div>
@@ -72,7 +72,7 @@ function Index() {
               <li key={e.id} className="flex items-center gap-3 text-[15px]">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary-foreground/80">{i + 1}</span>
                 <span className="truncate">{e.name}</span>
-                <span className="ml-auto whitespace-nowrap text-xs text-muted-foreground">{exerciseDose(e)}</span>
+                <span className="ml-auto whitespace-nowrap text-xs text-muted-foreground">{exerciseDose(e, state.intensity)}</span>
               </li>
             ))}
           </ul>
@@ -85,7 +85,7 @@ function Index() {
           <Link to="/workout" search={{ mode: "halvt" }} className="group rounded-2xl bg-card p-4 ring-1 ring-border/60 transition active:scale-[0.99]">
             <Target className="h-5 w-5 text-primary" />
             <p className="mt-3 text-sm font-medium">Halvt pass</p>
-            <p className="text-xs text-muted-foreground">5 övningar · 2 set</p>
+            <p className="text-xs text-muted-foreground">5 övningar · {intensityLabel(state.intensity).toLowerCase()}</p>
           </Link>
           <Link to="/hundred" className="group rounded-2xl bg-card p-4 ring-1 ring-border/60 transition active:scale-[0.99]">
             <Hash className="h-5 w-5 text-primary" />
@@ -120,7 +120,7 @@ function Index() {
         <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
           <p className="text-sm font-medium">Appen är anpassad</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Påminnelse {state.reminder.enabled ? `på ${state.reminder.time}` : "av"}. {favorites} favoriter och {hidden} dolda övningar.
+            Nivå {intensityLabel(state.intensity).toLowerCase()}. Påminnelse {state.reminder.enabled ? `på ${state.reminder.time}` : "av"}. {favorites} favoriter och {hidden} dolda övningar.
           </p>
         </section>
 
