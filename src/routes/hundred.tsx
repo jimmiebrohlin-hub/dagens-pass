@@ -16,6 +16,13 @@ export const Route = createFileRoute("/hundred")({
 
 type Phase = "pick" | "do" | "rate";
 
+function feedbackHint(level: HundredFeedback) {
+  if (level === "latt") return "Nästa gång ökar appen med 2 reps per set.";
+  if (level === "medel") return "Nästa gång ökar appen med 1 rep per set.";
+  if (level === "svart") return "Nästa gång behåller appen samma nivå.";
+  return "Nästa gång sänker appen nivån med 2 reps per set.";
+}
+
 function HundredPage() {
   const [state, setState] = useAppState();
   const [phase, setPhase] = useState<Phase>("pick");
@@ -33,10 +40,16 @@ function HundredPage() {
 
   function rate(level: HundredFeedback) {
     if (!active) return;
-    const delta = level === "latt" ? 2 : level === "medel" ? 1 : 0;
     setState((s) => {
       const cur = s.hundred[active.id]?.reps ?? START_REPS;
-      const next = Math.min(34, cur + delta);
+      const next =
+        level === "latt"
+          ? Math.min(34, cur + 2)
+          : level === "medel"
+            ? Math.min(34, cur + 1)
+            : level === "misslyckat"
+              ? Math.max(START_REPS, cur - 2)
+              : cur;
       return addSession(
         {
           ...s,
@@ -44,7 +57,7 @@ function HundredPage() {
         },
         {
           mode: "hundred",
-          exercises: [{ id: active.id, name: active.name, status: "done" }],
+          exercises: [{ id: active.id, name: active.name, status: level === "misslyckat" ? "skipped" : "done" }],
           feedback: level,
           totalReps: total,
         },
@@ -138,6 +151,7 @@ function HundredPage() {
                   { id: "latt", label: "Lätt", hint: "+2 reps per set" },
                   { id: "medel", label: "Medel", hint: "+1 rep per set" },
                   { id: "svart", label: "Svårt", hint: "Samma reps nästa gång" },
+                  { id: "misslyckat", label: "Klarade inte", hint: "-2 reps per set nästa gång" },
                 ] as const
               ).map((opt) => (
                 <button
@@ -150,6 +164,9 @@ function HundredPage() {
                 </button>
               ))}
             </div>
+            <p className="mt-4 rounded-2xl bg-secondary/60 p-4 text-xs text-muted-foreground">
+              {feedbackHint("misslyckat")} Miniminivån är 3 × {START_REPS}.
+            </p>
           </>
         )}
       </div>
