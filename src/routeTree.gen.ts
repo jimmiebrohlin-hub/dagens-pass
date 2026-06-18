@@ -10,19 +10,14 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkoutRouteImport } from './routes/workout'
-import { Route as HundredRouteImport } from './routes/hundred'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as HundredRouteImport } from './routes/hundred'
 import { Route as IndexRouteImport } from './routes/index'
 
 const WorkoutRoute = WorkoutRouteImport.update({
   id: '/workout',
   path: '/workout',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HundredRoute = HundredRouteImport.update({
-  id: '/hundred',
-  path: '/hundred',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StatsRoute = StatsRouteImport.update({
@@ -33,6 +28,11 @@ const StatsRoute = StatsRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HundredRoute = HundredRouteImport.update({
+  id: '/hundred',
+  path: '/hundred',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -88,11 +88,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/hundred': {
-      id: '/hundred'
-      path: '/hundred'
-      fullPath: '/hundred'
-      preLoaderRoute: typeof HundredRouteImport
+    '/stats': {
+      id: '/stats'
+      path: '/stats'
+      fullPath: '/stats'
+      preLoaderRoute: typeof StatsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -102,11 +102,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/stats': {
-      id: '/stats'
-      path: '/stats'
-      fullPath: '/stats'
-      preLoaderRoute: typeof StatsRouteImport
+    '/hundred': {
+      id: '/hundred'
+      path: '/hundred'
+      fullPath: '/hundred'
+      preLoaderRoute: typeof HundredRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
