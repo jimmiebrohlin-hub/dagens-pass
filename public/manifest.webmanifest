@@ -1,0 +1,21 @@
+{
+  "name": "Vardagsstyrka",
+  "short_name": "Styrka",
+  "description": "Små steg. Starkare varje dag.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F8F5EE",
+  "theme_color": "#6F8F72",
+  "categories": ["health", "fitness", "lifestyle"],
+  "lang": "sv-SE",
+  "icons": [
+    {
+      "src": "/icons/vardagsstyrka-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
