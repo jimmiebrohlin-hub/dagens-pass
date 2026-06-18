@@ -76,10 +76,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Vardagsstyrka" },
       { name: "description", content: "Små steg. Starkare varje dag." },
       { name: "author", content: "Vardagsstyrka" },
+      { name: "theme-color", content: "#6F8F72" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "Vardagsstyrka" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { property: "og:title", content: "Vardagsstyrka" },
       { property: "og:description", content: "Små steg. Starkare varje dag." },
       { property: "og:type", content: "website" },
@@ -93,6 +98,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      {
+        rel: "manifest",
+        href: "/manifest.webmanifest",
+      },
+      {
+        rel: "icon",
+        href: "/icons/vardagsstyrka-icon.svg",
+        type: "image/svg+xml",
+      },
+      {
+        rel: "apple-touch-icon",
+        href: "/icons/vardagsstyrka-icon.svg",
       },
     ],
   }),
