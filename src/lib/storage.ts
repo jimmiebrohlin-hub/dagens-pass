@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 export type WorkoutMode = "dagens3" | "halvt" | "hundred";
 export type ExerciseStatus = "done" | "skipped";
 export type HundredFeedback = "latt" | "medel" | "svart" | "misslyckat";
+export type WorkoutIntensity = "enkel" | "normal" | "tuff";
 
 export interface WorkoutExerciseLog {
   id: string;
@@ -36,6 +37,7 @@ export interface AppState {
   hundred: Record<string, { reps: number }>;
   reminder: ReminderSettings;
   preferences: ExercisePreferences;
+  intensity: WorkoutIntensity;
 }
 
 const KEY = "vardagsstyrka-app-state-v1";
@@ -45,16 +47,22 @@ const LEGACY_STATE_EVENT = "trean:state";
 
 const DEFAULT_REMINDER: ReminderSettings = { enabled: false, time: "08:00" };
 const DEFAULT_PREFERENCES: ExercisePreferences = { favoriteIds: [], blockedIds: [] };
+const DEFAULT_INTENSITY: WorkoutIntensity = "normal";
 const DEFAULT: AppState = {
   completedDates: [],
   sessions: [],
   hundred: {},
   reminder: DEFAULT_REMINDER,
   preferences: DEFAULT_PREFERENCES,
+  intensity: DEFAULT_INTENSITY,
 };
 
 function unique(ids: string[]): string[] {
   return Array.from(new Set(ids));
+}
+
+function normalizeIntensity(value: unknown): WorkoutIntensity {
+  return value === "enkel" || value === "tuff" || value === "normal" ? value : DEFAULT_INTENSITY;
 }
 
 export function defaultState(): AppState {
@@ -64,6 +72,7 @@ export function defaultState(): AppState {
     hundred: {},
     reminder: { ...DEFAULT_REMINDER },
     preferences: { ...DEFAULT_PREFERENCES, favoriteIds: [], blockedIds: [] },
+    intensity: DEFAULT_INTENSITY,
   };
 }
 
@@ -85,6 +94,7 @@ export function loadState(): AppState {
         favoriteIds: Array.isArray(prefs.favoriteIds) ? unique(prefs.favoriteIds) : [],
         blockedIds: Array.isArray(prefs.blockedIds) ? unique(prefs.blockedIds) : [],
       },
+      intensity: normalizeIntensity(parsed.intensity),
     };
   } catch {
     return defaultState();
@@ -121,6 +131,7 @@ export function createSampleState(): AppState {
     completedDates: dates,
     reminder: { enabled: true, time: "08:00" },
     preferences: { favoriteIds: ["knaboj", "hoftlyft"], blockedIds: [] },
+    intensity: "normal",
     hundred: {
       knaboj: { reps: 14 },
       armhavningar: { reps: 9 },
@@ -215,6 +226,13 @@ export function updateReminder(s: AppState, reminder: Partial<ReminderSettings>)
   return {
     ...s,
     reminder: { ...s.reminder, ...reminder },
+  };
+}
+
+export function updateIntensity(s: AppState, intensity: WorkoutIntensity): AppState {
+  return {
+    ...s,
+    intensity,
   };
 }
 
