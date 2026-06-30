@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import { DEFAULT_INTENSITY, normalizeIntensity, type WorkoutIntensity } from "./intensity";
 
+export type { WorkoutIntensity } from "./intensity";
 export type WorkoutMode = "dagens3" | "halvt" | "hundred";
 export type ExerciseStatus = "done" | "skipped";
 export type HundredFeedback = "latt" | "medel" | "svart" | "misslyckat";
-export type WorkoutIntensity = "enkel" | "normal" | "tuff";
 
 export interface WorkoutExerciseLog {
   id: string;
@@ -47,7 +48,6 @@ const LEGACY_STATE_EVENT = "trean:state";
 
 const DEFAULT_REMINDER: ReminderSettings = { enabled: false, time: "08:00" };
 const DEFAULT_PREFERENCES: ExercisePreferences = { favoriteIds: [], blockedIds: [] };
-const DEFAULT_INTENSITY: WorkoutIntensity = "normal";
 const DEFAULT: AppState = {
   completedDates: [],
   sessions: [],
@@ -59,10 +59,6 @@ const DEFAULT: AppState = {
 
 function unique(ids: string[]): string[] {
   return Array.from(new Set(ids));
-}
-
-function normalizeIntensity(value: unknown): WorkoutIntensity {
-  return value === "enkel" || value === "tuff" || value === "normal" ? value : DEFAULT_INTENSITY;
 }
 
 export function defaultState(): AppState {
@@ -131,7 +127,7 @@ export function createSampleState(): AppState {
     completedDates: dates,
     reminder: { enabled: true, time: "08:00" },
     preferences: { favoriteIds: ["knaboj", "hoftlyft"], blockedIds: [] },
-    intensity: "normal",
+    intensity: DEFAULT_INTENSITY,
     hundred: {
       knaboj: { reps: 14 },
       armhavningar: { reps: 9 },
