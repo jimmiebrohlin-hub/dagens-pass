@@ -1,4 +1,5 @@
-import type { WorkoutIntensity } from "./storage";
+import type { WorkoutIntensity } from "./intensity";
+export { intensityLabel } from "./intensity";
 
 export type ExerciseKind = "reps" | "time" | "side";
 export type MuscleGroup = "lower" | "upper" | "core";
@@ -89,12 +90,6 @@ export function pickHalf(seed: string, options: PickOptions = {}): Exercise[] {
     if (exercise) picked.push({ ...exercise, sets: 2 });
   }
   return picked;
-}
-
-export function intensityLabel(intensity: WorkoutIntensity): string {
-  if (intensity === "enkel") return "Enkel";
-  if (intensity === "tuff") return "Tuff";
-  return "Normal";
 }
 
 export function applyIntensity(exercise: Exercise, intensity: WorkoutIntensity = "normal"): Exercise {
