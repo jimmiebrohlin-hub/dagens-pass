@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, SkipForward, Timer, Info } from "lucide-react";
 import { exerciseDose, intensityLabel, pickDailyThree, pickHalf, type Exercise } from "@/lib/exercises";
+import { playTimerDoneCue, unlockTimerSound } from "@/lib/sound";
 import { todayISO, useAppState, addSession } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
 
@@ -30,6 +31,7 @@ function WorkoutPage() {
   const [idx, setIdx] = useState(0);
   const [done, setDone] = useState<boolean[]>(() => exercises.map(() => false));
   const [restSeconds, setRestSeconds] = useState(0);
+  const [timerFinished, setTimerFinished] = useState(false);
   const current = exercises[idx];
   const finished = idx >= exercises.length;
   const title = mode === "halvt" ? "Halvt pass" : "Dagens 3";
@@ -38,13 +40,32 @@ function WorkoutPage() {
   useEffect(() => {
     if (restSeconds <= 0) return;
     const timer = window.setInterval(() => {
-      setRestSeconds((seconds) => Math.max(0, seconds - 1));
+      setRestSeconds((seconds) => {
+        const nextSeconds = Math.max(0, seconds - 1);
+        if (seconds > 0 && nextSeconds === 0) {
+          setTimerFinished(true);
+          void playTimerDoneCue(state.sound);
+        }
+        return nextSeconds;
+      });
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [restSeconds]);
+  }, [restSeconds, state.sound]);
+
+  function startRest(seconds: number) {
+    setTimerFinished(false);
+    void unlockTimerSound();
+    setRestSeconds(seconds);
+  }
+
+  function skipRest() {
+    setTimerFinished(false);
+    setRestSeconds(0);
+  }
 
   function next(completed: boolean) {
     setRestSeconds(0);
+    setTimerFinished(false);
     setDone((d) => {
       const nd = [...d];
       nd[idx] = completed;
@@ -128,12 +149,12 @@ function WorkoutPage() {
                   <div>
                     <p className="text-sm font-medium">Vila</p>
                     <p className="text-xs text-muted-foreground">
-                      {restSeconds > 0 ? `${restSeconds} sek kvar` : "Starta kort vila vid behov"}
+                      {restSeconds > 0 ? `${restSeconds} sek kvar` : timerFinished ? "Vila klar" : "Starta kort vila vid behov"}
                     </p>
                   </div>
                 </div>
                 {restSeconds > 0 && (
-                  <button onClick={() => setRestSeconds(0)} className="rounded-full bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground active:scale-[0.98]">
+                  <button onClick={skipRest} className="rounded-full bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground active:scale-[0.98]">
                     Hoppa över
                   </button>
                 )}
@@ -145,12 +166,15 @@ function WorkoutPage() {
               ) : (
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   {REST_OPTIONS.map((seconds) => (
-                    <button key={seconds} onClick={() => setRestSeconds(seconds)} className="h-10 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.98]">
+                    <button key={seconds} onClick={() => startRest(seconds)} className="h-10 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.98]">
                       {seconds}s
                     </button>
                   ))}
                 </div>
               )}
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                {state.sound.enabled || state.sound.vibration ? "Signal när timern är klar." : "Signal är avstängd i inställningar."}
+              </p>
             </section>
 
             <div className="mt-6 grid grid-cols-[1fr_auto] gap-3">
