@@ -1,2 +1,2 @@
 export const APP_NAME = "Vardagsstyrka";
-export const APP_VERSION = "v0.7.1";
+export const APP_VERSION = "v0.7.1-fix1";
