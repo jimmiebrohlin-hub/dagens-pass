@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Bell, Star, EyeOff, Settings, ChevronRight, Gauge } from "lucide-react";
+import { ArrowLeft, Bell, Star, EyeOff, Settings, ChevronRight, Gauge, Volume2 } from "lucide-react";
 import { EXERCISES, intensityLabel } from "@/lib/exercises";
-import { useAppState, updateReminder, toggleFavorite, toggleBlocked, updateIntensity, type WorkoutIntensity } from "@/lib/storage";
+import { playTimerDoneCue, unlockTimerSound } from "@/lib/sound";
+import { useAppState, updateReminder, toggleFavorite, toggleBlocked, updateIntensity, updateSound, type WorkoutIntensity } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
 
 const INTENSITIES: Array<{ id: WorkoutIntensity; label: string; hint: string }> = [
@@ -20,6 +21,11 @@ function SettingsPage() {
   const favorites = state.preferences.favoriteIds.length;
   const blocked = state.preferences.blockedIds.length;
 
+  async function testSound() {
+    await unlockTimerSound();
+    await playTimerDoneCue(state.sound);
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-md px-5 pb-16 pt-8">
@@ -37,7 +43,7 @@ function SettingsPage() {
           </div>
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">Anpassa appen</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Nivå, påminnelse och vilka övningar som ska prioriteras.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Nivå, ljud, påminnelse och vilka övningar som ska prioriteras.</p>
           </div>
         </div>
 
@@ -66,6 +72,44 @@ function SettingsPage() {
             ))}
           </div>
           <p className="mt-3 text-xs text-muted-foreground">Nivån påverkar Dagens 3 och Halvt pass. 100 reps styrs av egen progression.</p>
+        </section>
+
+        <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15">
+              <Volume2 className="h-4 w-4 text-primary-foreground/80" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">Ljud och vibration</p>
+                  <p className="text-xs text-muted-foreground">
+                    Timer klar: ljud {state.sound.enabled ? "på" : "av"}, vibration {state.sound.vibration ? "på" : "av"}
+                  </p>
+                </div>
+                <button onClick={testSound} className="rounded-full bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground active:scale-[0.98]">
+                  Testa
+                </button>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setState((s) => updateSound(s, { enabled: !s.sound.enabled }))}
+                  className={`rounded-2xl p-3 text-left active:scale-[0.98] ${state.sound.enabled ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
+                >
+                  <p className="text-sm font-medium">Ljud</p>
+                  <p className={`mt-0.5 text-[11px] ${state.sound.enabled ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{state.sound.enabled ? "På" : "Av"}</p>
+                </button>
+                <button
+                  onClick={() => setState((s) => updateSound(s, { vibration: !s.sound.vibration }))}
+                  className={`rounded-2xl p-3 text-left active:scale-[0.98] ${state.sound.vibration ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
+                >
+                  <p className="text-sm font-medium">Vibration</p>
+                  <p className={`mt-0.5 text-[11px] ${state.sound.vibration ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{state.sound.vibration ? "På" : "Av"}</p>
+                </button>
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">På iPhone behöver ljud ofta aktiveras genom att du trycker i appen först. Test-knappen gör det enklare.</p>
+            </div>
+          </div>
         </section>
 
         <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
