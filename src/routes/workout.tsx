@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, SkipForward, Timer, Info } from "lucide-react";
 import { exerciseDose, intensityLabel, pickDailyThree, pickHalf, type Exercise } from "@/lib/exercises";
-import { playTimerDoneCue, unlockTimerSound } from "@/lib/sound";
 import { todayISO, useAppState, addSession } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
 
@@ -44,17 +43,15 @@ function WorkoutPage() {
         const nextSeconds = Math.max(0, seconds - 1);
         if (seconds > 0 && nextSeconds === 0) {
           setTimerFinished(true);
-          void playTimerDoneCue(state.sound);
         }
         return nextSeconds;
       });
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [restSeconds, state.sound]);
+  }, [restSeconds]);
 
   function startRest(seconds: number) {
     setTimerFinished(false);
-    void unlockTimerSound();
     setRestSeconds(seconds);
   }
 
@@ -142,14 +139,14 @@ function WorkoutPage() {
               )}
             </div>
 
-            <section className="mt-4 rounded-2xl bg-card p-4 ring-1 ring-border/60">
+            <section className={`mt-4 rounded-2xl bg-card p-4 ring-1 ${timerFinished ? "ring-primary/40" : "ring-border/60"}`}>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Timer className="h-4 w-4 text-primary" />
                   <div>
                     <p className="text-sm font-medium">Vila</p>
                     <p className="text-xs text-muted-foreground">
-                      {restSeconds > 0 ? `${restSeconds} sek kvar` : timerFinished ? "Vila klar" : "Starta kort vila vid behov"}
+                      {restSeconds > 0 ? `${restSeconds} sek kvar` : timerFinished ? "Timer klar" : "Starta kort vila vid behov"}
                     </p>
                   </div>
                 </div>
@@ -159,6 +156,11 @@ function WorkoutPage() {
                   </button>
                 )}
               </div>
+              {timerFinished && restSeconds === 0 && (
+                <div className="mt-3 rounded-2xl bg-primary/15 p-3 text-sm font-medium">
+                  Timer klar. Automatisk signal är tillfälligt avstängd medan vi testar stabilitet.
+                </div>
+              )}
               {restSeconds > 0 ? (
                 <div className="mt-3 h-2 w-full rounded-full bg-muted">
                   <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.max(4, (restSeconds / 60) * 100)}%` }} />
@@ -173,7 +175,7 @@ function WorkoutPage() {
                 </div>
               )}
               <p className="mt-2 text-[11px] text-muted-foreground">
-                {state.sound.enabled || state.sound.vibration ? "Signal när timern är klar." : "Signal är avstängd i inställningar."}
+                Ljud kan fortfarande testas från startsidan och inställningar.
               </p>
             </section>
 
