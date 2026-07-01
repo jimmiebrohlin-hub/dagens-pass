@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { DEFAULT_INTENSITY, normalizeIntensity, type WorkoutIntensity } from "./intensity";
+import { DEFAULT_SOUND, type SoundSettings } from "./sound";
 
 export type { WorkoutIntensity } from "./intensity";
+export type { SoundSettings } from "./sound";
 export type WorkoutMode = "dagens3" | "halvt" | "hundred";
 export type ExerciseStatus = "done" | "skipped";
 export type HundredFeedback = "latt" | "medel" | "svart" | "misslyckat";
@@ -39,6 +41,7 @@ export interface AppState {
   reminder: ReminderSettings;
   preferences: ExercisePreferences;
   intensity: WorkoutIntensity;
+  sound: SoundSettings;
 }
 
 const KEY = "vardagsstyrka-app-state-v1";
@@ -55,10 +58,20 @@ const DEFAULT: AppState = {
   reminder: DEFAULT_REMINDER,
   preferences: DEFAULT_PREFERENCES,
   intensity: DEFAULT_INTENSITY,
+  sound: DEFAULT_SOUND,
 };
 
 function unique(ids: string[]): string[] {
   return Array.from(new Set(ids));
+}
+
+function normalizeSound(value: unknown): SoundSettings {
+  if (!value || typeof value !== "object") return { ...DEFAULT_SOUND };
+  const sound = value as Partial<SoundSettings>;
+  return {
+    enabled: typeof sound.enabled === "boolean" ? sound.enabled : DEFAULT_SOUND.enabled,
+    vibration: typeof sound.vibration === "boolean" ? sound.vibration : DEFAULT_SOUND.vibration,
+  };
 }
 
 export function defaultState(): AppState {
@@ -69,6 +82,7 @@ export function defaultState(): AppState {
     reminder: { ...DEFAULT_REMINDER },
     preferences: { ...DEFAULT_PREFERENCES, favoriteIds: [], blockedIds: [] },
     intensity: DEFAULT_INTENSITY,
+    sound: { ...DEFAULT_SOUND },
   };
 }
 
@@ -91,6 +105,7 @@ export function loadState(): AppState {
         blockedIds: Array.isArray(prefs.blockedIds) ? unique(prefs.blockedIds) : [],
       },
       intensity: normalizeIntensity(parsed.intensity),
+      sound: normalizeSound(parsed.sound),
     };
   } catch {
     return defaultState();
@@ -128,6 +143,7 @@ export function createSampleState(): AppState {
     reminder: { enabled: true, time: "08:00" },
     preferences: { favoriteIds: ["knaboj", "hoftlyft"], blockedIds: [] },
     intensity: DEFAULT_INTENSITY,
+    sound: { ...DEFAULT_SOUND },
     hundred: {
       knaboj: { reps: 14 },
       armhavningar: { reps: 9 },
@@ -229,6 +245,13 @@ export function updateIntensity(s: AppState, intensity: WorkoutIntensity): AppSt
   return {
     ...s,
     intensity,
+  };
+}
+
+export function updateSound(s: AppState, sound: Partial<SoundSettings>): AppState {
+  return {
+    ...s,
+    sound: { ...s.sound, ...sound },
   };
 }
 
