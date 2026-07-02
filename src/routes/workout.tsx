@@ -7,6 +7,7 @@ import { todayISO, useAppState, addSession } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
 
 type Mode = "dagens3" | "halvt";
+type PendingAction = "next-set" | "next-exercise";
 const REST_SECONDS = 45;
 
 export const Route = createFileRoute("/workout")({
@@ -33,6 +34,7 @@ function WorkoutPage() {
   const [done, setDone] = useState<boolean[]>(() => exercises.map(() => false));
   const [restSeconds, setRestSeconds] = useState(0);
   const [timerFinished, setTimerFinished] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
   const current = exercises[exerciseIndex];
   const adjusted = current ? applyIntensity(current, state.intensity) : undefined;
@@ -57,15 +59,27 @@ function WorkoutPage() {
     return () => window.clearInterval(timer);
   }, [restSeconds, state.sound]);
 
-  function startRest() {
+  useEffect(() => {
+    if (!timerFinished || !pendingAction) return;
+    if (pendingAction === "next-set") {
+      setSetNumberIndex((index) => index + 1);
+    } else {
+      setSetNumberIndex(0);
+      setExerciseIndex((index) => index + 1);
+    }
+    setPendingAction(null);
+  }, [timerFinished, pendingAction]);
+
+  function startRest(action: PendingAction) {
     setTimerFinished(false);
+    setPendingAction(action);
     void unlockTimerSound();
     setRestSeconds(REST_SECONDS);
   }
 
   function skipRest() {
-    setTimerFinished(false);
     setRestSeconds(0);
+    setTimerFinished(true);
   }
 
   function markDone(index: number, completed: boolean) {
@@ -77,25 +91,23 @@ function WorkoutPage() {
   }
 
   function completeSet() {
-    if (!current || !adjusted) return;
+    if (!current || !adjusted || pendingAction) return;
     const currentExerciseIndex = exerciseIndex;
     const hasMoreSets = setNumberIndex + 1 < adjusted.sets;
     const hasMoreExercises = exerciseIndex + 1 < exercises.length;
 
     if (hasMoreSets) {
-      setSetNumberIndex((index) => index + 1);
-      startRest();
+      startRest("next-set");
       return;
     }
 
     markDone(currentExerciseIndex, true);
-    setSetNumberIndex(0);
     if (hasMoreExercises) {
-      setExerciseIndex((index) => index + 1);
-      startRest();
+      startRest("next-exercise");
     } else {
       setRestSeconds(0);
       setTimerFinished(false);
+      setSetNumberIndex(0);
       setExerciseIndex((index) => index + 1);
     }
   }
@@ -104,6 +116,7 @@ function WorkoutPage() {
     markDone(exerciseIndex, false);
     setRestSeconds(0);
     setTimerFinished(false);
+    setPendingAction(null);
     setSetNumberIndex(0);
     setExerciseIndex((index) => index + 1);
   }
@@ -199,7 +212,7 @@ function WorkoutPage() {
               </div>
               {timerFinished && restSeconds === 0 && (
                 <div className="mt-3 rounded-2xl bg-primary/15 p-3 text-sm font-medium">
-                  Vila klar. Gör nästa set när du är redo.
+                  Vila klar. Nästa set visas nu.
                 </div>
               )}
               {restSeconds > 0 && (
@@ -209,13 +222,13 @@ function WorkoutPage() {
               )}
               {!restSeconds && !timerFinished && (
                 <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-xs text-muted-foreground">
-                  Tryck Klar när setet är gjort. Då visas nästa set och vilan startar automatiskt.
+                  Tryck Klar när setet är gjort. Då startar vilan. Nästa set visas när vilan är klar.
                 </p>
               )}
             </section>
 
             <div className="mt-6 grid grid-cols-[1fr_auto] gap-3">
-              <button disabled={restSeconds > 0} onClick={completeSet} className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground shadow-sm disabled:opacity-50 active:scale-[0.99]">
+              <button disabled={restSeconds > 0 || pendingAction !== null} onClick={completeSet} className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground shadow-sm disabled:opacity-50 active:scale-[0.99]">
                 <Check className="h-4 w-4" /> Klar
               </button>
               <button onClick={skipExercise} className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-secondary px-5 text-sm font-medium text-secondary-foreground active:scale-[0.99]">
