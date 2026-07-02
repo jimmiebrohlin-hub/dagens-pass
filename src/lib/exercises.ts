@@ -108,3 +108,10 @@ export function exerciseDose(exercise: Exercise, intensity: WorkoutIntensity = "
   if (adjusted.kind === "side") return `${adjusted.sets} × ${adjusted.reps} per sida`;
   return `${adjusted.sets} × ${adjusted.reps}`;
 }
+
+export function exerciseSetDose(exercise: Exercise, intensity: WorkoutIntensity = "normal"): string {
+  const adjusted = applyIntensity(exercise, intensity);
+  if (adjusted.kind === "time") return `${adjusted.seconds} sek`;
+  if (adjusted.kind === "side") return `${adjusted.reps} per sida`;
+  return `${adjusted.reps} reps`;
+}
