@@ -7,6 +7,7 @@ import { todayISO, useAppState, addSession } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
 
 type Mode = "dagens3" | "halvt";
+type CoachPhase = "exercise" | "rest";
 type PendingAction = "next-set" | "next-exercise";
 const REST_SECONDS = 45;
 
@@ -32,8 +33,8 @@ function WorkoutPage() {
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const [setNumberIndex, setSetNumberIndex] = useState(0);
   const [done, setDone] = useState<boolean[]>(() => exercises.map(() => false));
+  const [phase, setPhase] = useState<CoachPhase>("exercise");
   const [restSeconds, setRestSeconds] = useState(0);
-  const [timerFinished, setTimerFinished] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
   const current = exercises[exerciseIndex];
@@ -44,43 +45,32 @@ function WorkoutPage() {
   const title = mode === "halvt" ? "Halvt pass" : "Dagens 3";
   const dailyDoneToday = mode === "dagens3" && state.sessions.some((session) => session.date === today && session.mode === "dagens3");
 
-  useEffect(() => {
-    if (restSeconds <= 0) return;
-    const timer = window.setInterval(() => {
-      setRestSeconds((seconds) => {
-        const nextSeconds = Math.max(0, seconds - 1);
-        if (seconds > 0 && nextSeconds === 0) {
-          setTimerFinished(true);
-          void playTimerDoneCue(state.sound);
-        }
-        return nextSeconds;
-      });
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [restSeconds, state.sound]);
+  const nextExercise = pendingAction === "next-exercise" ? exercises[exerciseIndex + 1] : current;
+  const nextSetNumber = pendingAction === "next-set" ? currentSet + 1 : 1;
+  const nextLabel = nextExercise ? `${nextExercise.name} · Set ${nextSetNumber} av ${nextExercise.sets}` : "Passet klart";
 
   useEffect(() => {
-    if (!timerFinished || !pendingAction) return;
+    if (phase !== "rest" || restSeconds <= 0) return;
+    const timer = window.setInterval(() => {
+      setRestSeconds((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [phase, restSeconds]);
+
+  useEffect(() => {
+    if (phase !== "rest" || restSeconds !== 0 || !pendingAction) return;
+    void playTimerDoneCue(state.sound);
+
     if (pendingAction === "next-set") {
       setSetNumberIndex((index) => index + 1);
     } else {
       setSetNumberIndex(0);
       setExerciseIndex((index) => index + 1);
     }
+
     setPendingAction(null);
-  }, [timerFinished, pendingAction]);
-
-  function startRest(action: PendingAction) {
-    setTimerFinished(false);
-    setPendingAction(action);
-    void unlockTimerSound();
-    setRestSeconds(REST_SECONDS);
-  }
-
-  function skipRest() {
-    setRestSeconds(0);
-    setTimerFinished(true);
-  }
+    setPhase("exercise");
+  }, [phase, restSeconds, pendingAction, state.sound]);
 
   function markDone(index: number, completed: boolean) {
     setDone((items) => {
@@ -90,23 +80,31 @@ function WorkoutPage() {
     });
   }
 
+  function beginRest(action: PendingAction) {
+    setPendingAction(action);
+    setPhase("rest");
+    void unlockTimerSound();
+    setRestSeconds(REST_SECONDS);
+  }
+
+  function skipRest() {
+    setRestSeconds(0);
+  }
+
   function completeSet() {
-    if (!current || !adjusted || pendingAction) return;
-    const currentExerciseIndex = exerciseIndex;
+    if (!current || !adjusted || phase !== "exercise") return;
     const hasMoreSets = setNumberIndex + 1 < adjusted.sets;
     const hasMoreExercises = exerciseIndex + 1 < exercises.length;
 
     if (hasMoreSets) {
-      startRest("next-set");
+      beginRest("next-set");
       return;
     }
 
-    markDone(currentExerciseIndex, true);
+    markDone(exerciseIndex, true);
     if (hasMoreExercises) {
-      startRest("next-exercise");
+      beginRest("next-exercise");
     } else {
-      setRestSeconds(0);
-      setTimerFinished(false);
       setSetNumberIndex(0);
       setExerciseIndex((index) => index + 1);
     }
@@ -114,8 +112,8 @@ function WorkoutPage() {
 
   function skipExercise() {
     markDone(exerciseIndex, false);
+    setPhase("exercise");
     setRestSeconds(0);
-    setTimerFinished(false);
     setPendingAction(null);
     setSetNumberIndex(0);
     setExerciseIndex((index) => index + 1);
@@ -137,119 +135,99 @@ function WorkoutPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-md px-5 pb-16 pt-8">
-        <header className="mb-6 flex items-center justify-between">
-          <Link to="/" className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <p className="text-sm text-muted-foreground">
-            {finished ? "Klart" : `${exerciseIndex + 1} / ${exercises.length}`}
-          </p>
-          <div className="w-9" />
+      <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-8 pt-6">
+        <header className="mb-5 rounded-3xl bg-card px-4 py-4 ring-1 ring-border/60">
+          <div className="flex items-center justify-between gap-3">
+            <Link to="/" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            <div className="min-w-0 flex-1 text-center">
+              <p className="text-lg font-semibold tracking-tight">{APP_NAME}</p>
+              <p className="text-xs text-muted-foreground">{title} · {intensityLabel(state.intensity)}</p>
+            </div>
+            <p className="w-10 text-right text-sm font-medium text-primary">{finished ? "Klart" : `${exerciseIndex + 1}/${exercises.length}`}</p>
+          </div>
+
+          {!finished && (
+            <div className="mt-4 flex gap-1.5">
+              {exercises.map((exercise, index) => (
+                <div key={exercise.id} className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                  <div className={`h-full rounded-full bg-primary ${done[index] ? "w-full" : index === exerciseIndex ? "w-2/3" : "w-0"}`} />
+                </div>
+              ))}
+            </div>
+          )}
         </header>
 
-        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-          {title} · {intensityLabel(state.intensity)}
-        </p>
         {dailyDoneToday && !finished && (
-          <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">
+          <p className="mb-4 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">
             Dagens 3 är redan sparat idag. Det här sparas som ett extra pass.
           </p>
         )}
 
         {!finished && current ? (
-          <>
-            <div className="mt-2 flex items-start justify-between gap-3">
-              <div>
-                <h1 className="text-3xl font-semibold tracking-tight">{current.name}</h1>
-                <p className="mt-1 text-sm text-muted-foreground">Set {currentSet} av {totalSets}</p>
-              </div>
-              <Link to="/exercise/$exerciseId" params={{ exerciseId: current.id }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground active:scale-[0.98]" aria-label="Visa övningsdetaljer">
-                <Info className="h-4 w-4" />
-              </Link>
-            </div>
-            <div className="mt-6 rounded-3xl bg-card p-6 ring-1 ring-border/60">
-              <p className="text-sm text-muted-foreground">Gör nu</p>
-              <p className="mt-1 text-5xl font-semibold tracking-tight">{exerciseSetDose(current, state.intensity)}</p>
-              <p className="mt-2 text-sm text-muted-foreground">Set {currentSet} av {totalSets} · totalt {exerciseDose(current, state.intensity)}</p>
-              <p className="mt-5 text-[15px] leading-relaxed text-muted-foreground">
-                {current.instruction}
-              </p>
-              {(current.easier || current.harder) && (
-                <div className="mt-5 space-y-2 rounded-2xl bg-secondary/60 p-4 text-sm">
-                  {current.easier && (
-                    <p>
-                      <span className="font-medium">Lättare: </span>
-                      <span className="text-muted-foreground">{current.easier}</span>
-                    </p>
-                  )}
-                  {current.harder && (
-                    <p>
-                      <span className="font-medium">Svårare: </span>
-                      <span className="text-muted-foreground">{current.harder}</span>
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <section className={`mt-4 rounded-2xl bg-card p-4 ring-1 ${timerFinished ? "ring-primary/40" : "ring-border/60"}`}>
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Timer className="h-4 w-4 text-primary" />
+          phase === "rest" ? (
+            <main className="flex flex-1 flex-col justify-center">
+              <section className="rounded-[2rem] bg-card p-7 text-center ring-1 ring-border/60">
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Vila</p>
+                <div className="mx-auto mt-6 flex h-44 w-44 items-center justify-center rounded-full bg-secondary ring-8 ring-primary/20">
                   <div>
-                    <p className="text-sm font-medium">Vila</p>
-                    <p className="text-xs text-muted-foreground">
-                      {restSeconds > 0 ? `${restSeconds} sek kvar` : timerFinished ? "Timer klar" : `${REST_SECONDS} sek efter Klar`}
-                    </p>
+                    <p className="text-7xl font-semibold leading-none tracking-tight">{restSeconds}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">sek kvar</p>
                   </div>
                 </div>
-                {restSeconds > 0 && (
-                  <button onClick={skipRest} className="rounded-full bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground active:scale-[0.98]">
-                    Hoppa över
-                  </button>
-                )}
-              </div>
-              {timerFinished && restSeconds === 0 && (
-                <div className="mt-3 rounded-2xl bg-primary/15 p-3 text-sm font-medium">
-                  Vila klar. Nästa set visas nu.
-                </div>
-              )}
-              {restSeconds > 0 && (
-                <div className="mt-3 h-2 w-full rounded-full bg-muted">
-                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.max(4, (restSeconds / REST_SECONDS) * 100)}%` }} />
-                </div>
-              )}
-              {!restSeconds && !timerFinished && (
-                <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-xs text-muted-foreground">
-                  Tryck Klar när setet är gjort. Då startar vilan. Nästa set visas när vilan är klar.
-                </p>
-              )}
-            </section>
-
-            <div className="mt-6 grid grid-cols-[1fr_auto] gap-3">
-              <button disabled={restSeconds > 0 || pendingAction !== null} onClick={completeSet} className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground shadow-sm disabled:opacity-50 active:scale-[0.99]">
-                <Check className="h-4 w-4" /> Klar
-              </button>
-              <button onClick={skipExercise} className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-secondary px-5 text-sm font-medium text-secondary-foreground active:scale-[0.99]">
-                <SkipForward className="h-4 w-4" /> Hoppa
-              </button>
-            </div>
-
-            <ul className="mt-8 space-y-2">
-              {exercises.map((e, i) => (
-                <li key={e.id} className={`flex items-center gap-3 text-sm ${i === exerciseIndex ? "text-foreground" : "text-muted-foreground"}`}>
-                  <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${done[i] ? "bg-primary text-primary-foreground" : i === exerciseIndex ? "bg-primary/20" : "bg-muted"}`}>
-                    {done[i] ? "✓" : i + 1}
-                  </span>
-                  <Link to="/exercise/$exerciseId" params={{ exerciseId: e.id }} className="truncate underline-offset-4 hover:underline">
-                    {e.name}
+                <p className="mt-7 text-sm text-muted-foreground">Nästa</p>
+                <p className="mt-1 text-2xl font-semibold tracking-tight">{nextLabel}</p>
+                <p className="mt-4 rounded-2xl bg-primary/15 p-3 text-sm font-medium text-primary">Ljudsignal när vilan är klar</p>
+                <button onClick={skipRest} className="mt-6 h-12 w-full rounded-2xl bg-secondary text-base font-medium text-secondary-foreground active:scale-[0.99]">
+                  Hoppa över vila
+                </button>
+              </section>
+            </main>
+          ) : (
+            <main className="flex flex-1 flex-col">
+              <section className="rounded-[2rem] bg-card p-6 ring-1 ring-border/60">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="inline-flex rounded-2xl bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Gör nu</p>
+                    <h1 className="mt-5 text-4xl font-semibold leading-none tracking-tight">{current.name}</h1>
+                    <p className="mt-2 text-lg font-medium text-muted-foreground">Set {currentSet} av {totalSets}</p>
+                  </div>
+                  <Link to="/exercise/$exerciseId" params={{ exerciseId: current.id }} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground active:scale-[0.98]" aria-label="Visa övningsdetaljer">
+                    <Info className="h-5 w-5" />
                   </Link>
-                  <span className="ml-auto text-xs text-muted-foreground">{i === exerciseIndex ? `set ${currentSet}/${totalSets}` : exerciseDose(e, state.intensity)}</span>
-                </li>
-              ))}
-            </ul>
-          </>
+                </div>
+
+                <div className="mt-7 rounded-[1.5rem] bg-secondary/60 p-6 text-center">
+                  <p className="text-6xl font-semibold tracking-tight">{exerciseSetDose(current, state.intensity)}</p>
+                  <p className="mt-3 text-sm text-muted-foreground">Totalt: {exerciseDose(current, state.intensity)}</p>
+                </div>
+
+                <p className="mt-6 text-[16px] leading-relaxed text-muted-foreground">{current.instruction}</p>
+              </section>
+
+              <section className="mt-4 rounded-[1.75rem] bg-card p-4 ring-1 ring-border/60">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Passöversikt</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {exercises.map((exercise, index) => (
+                    <div key={exercise.id} className={`rounded-2xl p-3 text-center ${index === exerciseIndex ? "bg-primary/15" : "bg-secondary/55"}`}>
+                      <p className={`text-xs font-semibold ${index === exerciseIndex ? "text-primary" : "text-muted-foreground"}`}>{done[index] ? "✓" : index + 1}</p>
+                      <p className="mt-1 truncate text-sm font-medium">{exercise.name}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <div className="mt-auto grid grid-cols-[1fr_auto] gap-3 pt-6">
+                <button onClick={completeSet} className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-primary text-lg font-medium text-primary-foreground shadow-sm active:scale-[0.99]">
+                  <Check className="h-5 w-5" /> Klar
+                </button>
+                <button onClick={skipExercise} className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-secondary px-6 text-base font-medium text-secondary-foreground active:scale-[0.99]">
+                  <SkipForward className="h-5 w-5" /> Hoppa
+                </button>
+              </div>
+            </main>
+          )
         ) : (
           <div className="mt-10 rounded-3xl bg-card p-8 text-center ring-1 ring-border/60">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/20">
