@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, SkipForward, Info } from "lucide-react";
-import { applyIntensity, exerciseDose, exerciseSetDose, intensityLabel, pickDailyThree, pickLarge, pickSmall, type Exercise } from "@/lib/exercises";
+import { applyIntensity, exerciseSetDose, intensityLabel, pickDailyThree, pickLarge, pickSmall, type Exercise } from "@/lib/exercises";
 import { playTimerDoneCue, unlockTimerSound } from "@/lib/sound";
 import { todayISO, useAppState, addSession } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
@@ -194,7 +194,7 @@ function WorkoutPage() {
                 <div className="min-w-0 flex-1 text-center">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Nu</p>
                   <p className="mt-0.5 truncate text-2xl font-semibold tracking-tight text-primary">{current.name}</p>
-                  <p className="mt-1 truncate text-sm text-muted-foreground">{phase === "rest" ? `Vilar · nästa: ${nextLabel}` : nextPreview ? `Nästa: ${nextPreview.name}` : "Sista övningen"}</p>
+                  <p className="mt-1 truncate text-sm text-muted-foreground">{nextPreview ? `Nästa: ${nextPreview.name}` : "Sista övningen"}</p>
                 </div>
                 {phase === "exercise" ? (
                   <button onClick={skipExercise} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground active:scale-[0.98]" aria-label="Hoppa över övningen">
@@ -219,7 +219,7 @@ function WorkoutPage() {
             <section className="rounded-[2rem] bg-card p-5 ring-1 ring-border/60">
               <div className="grid grid-cols-[1fr_112px] gap-4">
                 <div>
-                  <p className="inline-flex rounded-2xl bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">{phase === "rest" ? "Vila" : "Gör nu"}</p>
+                  <p className="inline-flex rounded-2xl bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Gör nu</p>
                   <div className="mt-4 flex items-center justify-between gap-3">
                     <p className="text-lg font-medium text-muted-foreground">Set {currentSet} av {totalSets}</p>
                     {phase === "rest" ? (
@@ -234,10 +234,9 @@ function WorkoutPage() {
                   </div>
                   <div className="mt-3 rounded-[1.25rem] bg-secondary/60 px-4 py-5">
                     <p className="text-5xl font-semibold leading-none tracking-tight">{exerciseSetDose(current, state.intensity)}</p>
-                    <p className="mt-2 text-sm text-muted-foreground">Totalt: {exerciseDose(current, state.intensity)}</p>
                   </div>
                   {phase === "rest" ? (
-                    <p className="mt-3 text-xs font-medium text-primary">Vilar nu. Tryck på timern för att gå vidare. Nästa: {nextLabel}</p>
+                    <p className="mt-3 text-xs font-medium text-primary">Tryck på timern för att gå vidare. Nästa: {nextLabel}</p>
                   ) : (
                     <p className="mt-3 text-xs font-medium text-primary">Efter Klar: vila {restDuration} sek</p>
                   )}
