@@ -1,42 +1,28 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { supabase as sharedSupabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
-
+// Lovable Cloud is always configured for this project — env vars are injected
+// automatically. Kept for backwards compatibility with existing UI checks.
 export function isSupabaseConfigured() {
-  return Boolean(supabaseUrl && supabaseAnonKey);
+  return true;
 }
 
-export const supabase: SupabaseClient | null = isSupabaseConfigured()
-  ? createClient(supabaseUrl!, supabaseAnonKey!, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-      },
-    })
-  : null;
+export const supabase = sharedSupabase;
 
 export async function signInWithGoogle() {
-  if (!supabase) {
-    return { error: new Error("Supabase är inte konfigurerat ännu.") };
+  if (typeof window === "undefined") {
+    return { error: new Error("Google-login kräver en webbläsare.") };
   }
-
-  return supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
-    },
+  return lovable.auth.signInWithOAuth("google", {
+    redirect_uri: window.location.origin,
   });
 }
 
 export async function signOut() {
-  if (!supabase) return { error: null };
   return supabase.auth.signOut();
 }
 
 export async function getCurrentUser() {
-  if (!supabase) return null;
   const { data } = await supabase.auth.getUser();
   return data.user ?? null;
 }
