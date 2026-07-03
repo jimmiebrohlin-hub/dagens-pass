@@ -69,6 +69,7 @@ function HundredPage() {
   const plan = challengePlan(reps);
   const total = planTotal(plan);
   const restDuration = state.restSeconds ?? DEFAULT_REST_SECONDS;
+  const restProgressPct = restDuration > 0 ? Math.max(0, Math.min(100, (restSeconds / restDuration) * 100)) : 0;
   const currentReps = plan[setIndex] ?? plan[0];
   const nextSet = setIndex + 2;
   const doneBaseReps = nextBaseReps ?? reps;
@@ -224,8 +225,9 @@ function HundredPage() {
                   {state.sound.enabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
                 </button>
               </div>
-              <button onClick={skipRest} className="mx-auto mt-5 flex h-40 w-40 items-center justify-center rounded-full bg-secondary ring-8 ring-primary/20 active:scale-[0.98]" aria-label="Avsluta vilan och gå vidare">
-                <div>
+              <button onClick={skipRest} className="relative mx-auto mt-5 flex h-40 w-40 items-center justify-center overflow-hidden rounded-full bg-secondary ring-8 ring-primary/20 active:scale-[0.98]" aria-label="Avsluta vilan och gå vidare">
+                <span className="absolute bottom-0 left-0 right-0 bg-primary/25 transition-all duration-300 ease-linear" style={{ height: `${restProgressPct}%` }} />
+                <div className="relative z-10">
                   <p className="text-6xl font-semibold leading-none tracking-tight">{restSeconds}</p>
                   <p className="mt-1 text-sm text-muted-foreground">sek kvar</p>
                 </div>
