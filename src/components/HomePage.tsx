@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { CheckCircle2, Flame, Target, Hash, BarChart3, Settings, User } from "lucide-react";
+import { CheckCircle2, Flame, Target, Hash, BarChart3, Settings, User, Users } from "lucide-react";
 import { useAppState, computeStreak, weekCount, todayISO } from "@/lib/storage";
 import { exerciseDose, intensityLabel, pickDailyThree } from "@/lib/exercises";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
@@ -84,10 +84,10 @@ export function HomePage() {
             <p className="mt-3 text-sm font-medium">100 challenge</p>
             <p className="text-xs text-muted-foreground">Bygg mot 100 reps</p>
           </Link>
-          <Link to="/account" className="group rounded-2xl bg-card p-4 ring-1 ring-border/60 transition active:scale-[0.99]">
-            <User className="h-5 w-5 text-primary" />
-            <p className="mt-3 text-sm font-medium">Konto</p>
-            <p className="text-xs text-muted-foreground">Google-login och molnsparning</p>
+          <Link to="/streak" className="group rounded-2xl bg-card p-4 ring-1 ring-border/60 transition active:scale-[0.99]">
+            <Users className="h-5 w-5 text-primary" />
+            <p className="mt-3 text-sm font-medium">Streak</p>
+            <p className="text-xs text-muted-foreground">Håll igång tillsammans</p>
           </Link>
         </div>
 
@@ -119,6 +119,9 @@ export function HomePage() {
           <p className="mt-1 text-xs text-muted-foreground">
             Nivå {intensityLabel(state.intensity).toLowerCase()}. Påminnelse {state.reminder.enabled ? `på ${state.reminder.time}` : "av"}. {favorites} favoriter och {hidden} dolda övningar.
           </p>
+          <Link to="/account" className="mt-4 flex h-10 items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99]">
+            <User className="h-4 w-4" /> Konto
+          </Link>
         </section>
 
         <p className="mt-8 text-center text-xs text-muted-foreground">Små steg. Starkare varje dag.</p>
