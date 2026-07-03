@@ -1,12 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, SkipForward, Info } from "lucide-react";
-import { applyIntensity, exerciseDose, exerciseSetDose, intensityLabel, pickDailyThree, pickHalf, type Exercise } from "@/lib/exercises";
+import { applyIntensity, exerciseDose, exerciseSetDose, intensityLabel, pickDailyThree, pickLarge, pickSmall, type Exercise } from "@/lib/exercises";
 import { playTimerDoneCue, unlockTimerSound } from "@/lib/sound";
 import { todayISO, useAppState, addSession } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
 
-type Mode = "dagens3" | "halvt";
+type Mode = "dagens3" | "halvt" | "stort";
 type CoachPhase = "exercise" | "rest";
 type PendingAction = "next-set" | "next-exercise";
 
@@ -36,7 +36,7 @@ const EXERCISE_IMAGES: Record<string, string> = {
 
 export const Route = createFileRoute("/workout")({
   validateSearch: (s: Record<string, unknown>): { mode: Mode } => ({
-    mode: s.mode === "halvt" ? "halvt" : "dagens3",
+    mode: s.mode === "stort" ? "stort" : s.mode === "halvt" ? "halvt" : "dagens3",
   }),
   head: () => ({ meta: [{ title: `Pass — ${APP_NAME}` }] }),
   component: WorkoutPage,
@@ -49,7 +49,7 @@ function WorkoutPage() {
   const today = todayISO();
 
   const exercises = useMemo<Exercise[]>(
-    () => (mode === "halvt" ? pickHalf(today + "h", state.preferences) : pickDailyThree(today, state.preferences)),
+    () => (mode === "stort" ? pickLarge(today + "l", state.preferences) : mode === "halvt" ? pickSmall(today + "s", state.preferences) : pickDailyThree(today, state.preferences)),
     [mode, today, state.preferences],
   );
 
@@ -65,7 +65,7 @@ function WorkoutPage() {
   const totalSets = adjusted?.sets ?? 1;
   const currentSet = Math.min(setNumberIndex + 1, totalSets);
   const finished = exerciseIndex >= exercises.length;
-  const title = mode === "halvt" ? "Halvt pass" : "Dagens 3";
+  const title = mode === "stort" ? "Stort blandpass" : mode === "halvt" ? "Litet blandpass" : "Dagens 3";
   const dailyDoneToday = mode === "dagens3" && state.sessions.some((session) => session.date === today && session.mode === "dagens3");
   const nextPreview = exercises[exerciseIndex + 1];
 
@@ -179,7 +179,7 @@ function WorkoutPage() {
               <div className="flex items-center justify-center gap-1.5">
                 {exercises.map((exercise, index) => (
                   <span
-                    key={exercise.id}
+                    key={`${exercise.id}-${index}`}
                     className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold ${
                       done[index] ? "bg-primary text-primary-foreground" : index === exerciseIndex ? "bg-primary/20 text-primary ring-2 ring-primary/25" : "bg-muted text-muted-foreground"
                     }`}
