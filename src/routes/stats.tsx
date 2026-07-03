@@ -4,19 +4,22 @@ import { EXERCISES } from "@/lib/exercises";
 import { useAppState, weekCount, createSampleState, defaultState } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
 
-const GOAL = 102;
-const SETS = 3;
+const GOAL = 100;
 
 export const Route = createFileRoute("/stats")({
   head: () => ({ meta: [{ title: `Statistik — ${APP_NAME}` }] }),
   component: StatsPage,
 });
 
+function challengePlan(baseReps: number): [number, number, number] {
+  return [baseReps, Math.min(34, baseReps + 4), Math.max(4, baseReps - 2)];
+}
+
 function modeLabel(mode: string) {
   if (mode === "dagens3") return "Dagens 3";
   if (mode === "halvt") return "Litet blandpass";
   if (mode === "stort") return "Stort blandpass";
-  if (mode === "hundred") return "100 reps";
+  if (mode === "hundred") return "100 challenge";
   return mode;
 }
 
@@ -33,13 +36,14 @@ function StatsPage() {
     .slice(0, 8);
   const hundred = EXERCISES.filter((e) => e.hundredEligible).map((exercise) => {
     const reps = state.hundred[exercise.id]?.reps ?? 8;
-    const totalReps = reps * SETS;
+    const plan = challengePlan(reps);
+    const totalReps = plan.reduce((sum, value) => sum + value, 0);
     const percent = Math.min(100, Math.round((totalReps / GOAL) * 100));
-    return { exercise, reps, totalReps, percent };
+    return { exercise, plan, totalReps, percent };
   });
 
   function resetAll() {
-    const ok = window.confirm("Vill du rensa all lokal data? Historik, favoriter och 100 reps-progression tas bort.");
+    const ok = window.confirm("Vill du rensa all lokal data? Historik, favoriter och 100 challenge-progression tas bort.");
     if (!ok) return;
     setState(() => defaultState());
   }
@@ -110,10 +114,10 @@ function StatsPage() {
         <section className="mt-6 rounded-2xl bg-card p-5 ring-1 ring-border/60">
           <div className="flex items-center gap-2">
             <Hash className="h-4 w-4 text-primary" />
-            <p className="text-sm font-medium">Road to 100</p>
+            <p className="text-sm font-medium">100 challenge</p>
           </div>
           <ul className="mt-4 space-y-3">
-            {hundred.map(({ exercise, reps, totalReps, percent }) => (
+            {hundred.map(({ exercise, plan, totalReps, percent }) => (
               <li key={exercise.id}>
                 <div className="flex items-center justify-between text-sm">
                   <span>{exercise.name}</span>
@@ -122,7 +126,7 @@ function StatsPage() {
                 <div className="mt-2 h-1.5 w-full rounded-full bg-muted">
                   <div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">3 × {reps}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{plan.join(" + ")}</p>
               </li>
             ))}
           </ul>
@@ -131,7 +135,7 @@ function StatsPage() {
         <section className="mt-6 rounded-2xl bg-card p-5 ring-1 ring-border/60">
           <p className="text-sm font-medium">Test och felsökning</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            För utveckling. Använd testdata för att se historik och Road to 100 utan att träna först.
+            För utveckling. Använd testdata för att se historik och 100 challenge utan att träna först.
           </p>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <button onClick={addSampleData} className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99]">
