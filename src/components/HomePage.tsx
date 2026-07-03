@@ -82,7 +82,7 @@ export function HomePage() {
           <Link to="/hundred" className="group rounded-2xl bg-card p-4 ring-1 ring-border/60 transition active:scale-[0.99]">
             <Hash className="h-5 w-5 text-primary" />
             <p className="mt-3 text-sm font-medium">100 challenge</p>
-            <p className="text-xs text-muted-foreground">Igång + toppset + back-off</p>
+            <p className="text-xs text-muted-foreground">Bygg mot 100 reps</p>
           </Link>
           <Link to="/account" className="group rounded-2xl bg-card p-4 ring-1 ring-border/60 transition active:scale-[0.99]">
             <User className="h-5 w-5 text-primary" />
