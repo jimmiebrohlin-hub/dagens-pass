@@ -86,6 +86,137 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_streak_activity: {
+        Row: {
+          activity_type: string
+          created_at: string
+          from_user_id: string | null
+          id: string
+          streak_count_after: number | null
+          streak_id: string
+          to_user_id: string | null
+          user_id: string
+          workout_session_id: string | null
+        }
+        Insert: {
+          activity_type?: string
+          created_at?: string
+          from_user_id?: string | null
+          id?: string
+          streak_count_after?: number | null
+          streak_id: string
+          to_user_id?: string | null
+          user_id: string
+          workout_session_id?: string | null
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          from_user_id?: string | null
+          id?: string
+          streak_count_after?: number | null
+          streak_id?: string
+          to_user_id?: string | null
+          user_id?: string
+          workout_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_streak_activity_streak_id_fkey"
+            columns: ["streak_id"]
+            isOneToOne: false
+            referencedRelation: "shared_streaks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_streak_activity_workout_session_id_fkey"
+            columns: ["workout_session_id"]
+            isOneToOne: false
+            referencedRelation: "workout_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shared_streak_members: {
+        Row: {
+          display_name: string | null
+          joined_at: string
+          member_order: number
+          role: string
+          status: string
+          streak_id: string
+          user_id: string
+        }
+        Insert: {
+          display_name?: string | null
+          joined_at?: string
+          member_order?: number
+          role?: string
+          status?: string
+          streak_id: string
+          user_id: string
+        }
+        Update: {
+          display_name?: string | null
+          joined_at?: string
+          member_order?: number
+          role?: string
+          status?: string
+          streak_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_streak_members_streak_id_fkey"
+            columns: ["streak_id"]
+            isOneToOne: false
+            referencedRelation: "shared_streaks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shared_streaks: {
+        Row: {
+          created_at: string
+          created_by: string
+          current_turn_user_id: string | null
+          id: string
+          invite_code: string
+          last_completed_at: string | null
+          name: string
+          status: string
+          streak_count: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          current_turn_user_id?: string | null
+          id?: string
+          invite_code?: string
+          last_completed_at?: string | null
+          name: string
+          status?: string
+          streak_count?: number
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          current_turn_user_id?: string | null
+          id?: string
+          invite_code?: string
+          last_completed_at?: string | null
+          name?: string
+          status?: string
+          streak_count?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_settings: {
         Row: {
           created_at: string
@@ -166,7 +297,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_active_streak_member: {
+        Args: { _streak_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
