@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 import { CheckCircle2, Flame, Target, Hash, BarChart3, Settings } from "lucide-react";
 import { useAppState, computeStreak, weekCount, todayISO } from "@/lib/storage";
 import { exerciseDose, intensityLabel, pickDailyThree } from "@/lib/exercises";
-import { HomeToneTest } from "@/components/HomeToneTest";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
 
 export function HomePage() {
@@ -33,8 +32,6 @@ export function HomePage() {
             <span className="text-muted-foreground">dagar</span>
           </div>
         </header>
-
-        <HomeToneTest settings={state.sound} />
 
         <section className={`mb-4 rounded-3xl bg-card p-6 shadow-sm ring-1 ${dailyDoneToday ? "ring-primary/30" : "ring-border/60"}`}>
           <div className="flex items-center justify-between">
