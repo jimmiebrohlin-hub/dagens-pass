@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { CheckCircle2, Flame, Target, Hash, BarChart3, Settings } from "lucide-react";
+import { CheckCircle2, Flame, Target, Hash, BarChart3, Settings, User } from "lucide-react";
 import { useAppState, computeStreak, weekCount, todayISO } from "@/lib/storage";
 import { exerciseDose, intensityLabel, pickDailyThree } from "@/lib/exercises";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
@@ -83,6 +83,11 @@ export function HomePage() {
             <Hash className="h-5 w-5 text-primary" />
             <p className="mt-3 text-sm font-medium">100 challenge</p>
             <p className="text-xs text-muted-foreground">Igång + toppset + back-off</p>
+          </Link>
+          <Link to="/account" className="group rounded-2xl bg-card p-4 ring-1 ring-border/60 transition active:scale-[0.99]">
+            <User className="h-5 w-5 text-primary" />
+            <p className="mt-3 text-sm font-medium">Konto</p>
+            <p className="text-xs text-muted-foreground">Google-login och molnsparning</p>
           </Link>
         </div>
 
