@@ -10,15 +10,22 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkoutRouteImport } from './routes/workout'
+import { Route as StreakRouteImport } from './routes/streak'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as HundredRouteImport } from './routes/hundred'
+import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ExerciseExerciseIdRouteImport } from './routes/exercise.$exerciseId'
 
 const WorkoutRoute = WorkoutRouteImport.update({
   id: '/workout',
   path: '/workout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StreakRoute = StreakRouteImport.update({
+  id: '/streak',
+  path: '/streak',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StatsRoute = StatsRouteImport.update({
@@ -36,6 +43,11 @@ const HundredRoute = HundredRouteImport.update({
   path: '/hundred',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -49,26 +61,32 @@ const ExerciseExerciseIdRoute = ExerciseExerciseIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/hundred': typeof HundredRoute
   '/settings': typeof SettingsRoute
   '/stats': typeof StatsRoute
+  '/streak': typeof StreakRoute
   '/workout': typeof WorkoutRoute
   '/exercise/$exerciseId': typeof ExerciseExerciseIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/hundred': typeof HundredRoute
   '/settings': typeof SettingsRoute
   '/stats': typeof StatsRoute
+  '/streak': typeof StreakRoute
   '/workout': typeof WorkoutRoute
   '/exercise/$exerciseId': typeof ExerciseExerciseIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/hundred': typeof HundredRoute
   '/settings': typeof SettingsRoute
   '/stats': typeof StatsRoute
+  '/streak': typeof StreakRoute
   '/workout': typeof WorkoutRoute
   '/exercise/$exerciseId': typeof ExerciseExerciseIdRoute
 }
@@ -76,34 +94,42 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account'
     | '/hundred'
     | '/settings'
     | '/stats'
+    | '/streak'
     | '/workout'
     | '/exercise/$exerciseId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account'
     | '/hundred'
     | '/settings'
     | '/stats'
+    | '/streak'
     | '/workout'
     | '/exercise/$exerciseId'
   id:
     | '__root__'
     | '/'
+    | '/account'
     | '/hundred'
     | '/settings'
     | '/stats'
+    | '/streak'
     | '/workout'
     | '/exercise/$exerciseId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountRoute: typeof AccountRoute
   HundredRoute: typeof HundredRoute
   SettingsRoute: typeof SettingsRoute
   StatsRoute: typeof StatsRoute
+  StreakRoute: typeof StreakRoute
   WorkoutRoute: typeof WorkoutRoute
   ExerciseExerciseIdRoute: typeof ExerciseExerciseIdRoute
 }
@@ -115,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/workout'
       fullPath: '/workout'
       preLoaderRoute: typeof WorkoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/streak': {
+      id: '/streak'
+      path: '/streak'
+      fullPath: '/streak'
+      preLoaderRoute: typeof StreakRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stats': {
@@ -138,6 +171,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HundredRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -157,22 +197,14 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountRoute: AccountRoute,
   HundredRoute: HundredRoute,
   SettingsRoute: SettingsRoute,
   StatsRoute: StatsRoute,
+  StreakRoute: StreakRoute,
   WorkoutRoute: WorkoutRoute,
   ExerciseExerciseIdRoute: ExerciseExerciseIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
