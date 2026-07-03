@@ -5,6 +5,28 @@ import { useAppState, type WorkoutIntensity } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
 
 const INTENSITIES: WorkoutIntensity[] = ["enkel", "normal", "tuff"];
+const EXERCISE_IMAGES: Record<string, string> = {
+  armhavningar: "/exercises/armhavningar.png",
+  bankdips: "/exercises/bankdips.png",
+  benlyft: "/exercises/benlyft.png",
+  bird_dog: "/exercises/bird_dog.png",
+  dead_bug: "/exercises/dead_bug.png",
+  hollow_hold: "/exercises/hollow_hold.png",
+  hoftlyft: "/exercises/hoftlyft.png",
+  jagarvila: "/exercises/jagarvila.png",
+  knaboj: "/exercises/knaboj.png",
+  mountain_climbers: "/exercises/mountain_climbers.png",
+  planka: "/exercises/planka.png",
+  russian_twist: "/exercises/russian_twist.png",
+  rygglyft: "/exercises/rygglyft.png",
+  sidoplanka: "/exercises/sidoplanka.png",
+  situps: "/exercises/situps.png",
+  spindelplanka: "/exercises/spindelplanka.png",
+  stepup: "/exercises/stepup.png",
+  tahavningar: "/exercises/tahavningar.png",
+  utfall: "/exercises/utfall.png",
+  vadpress: "/exercises/vadpress.png",
+};
 
 function muscleLabel(group: string) {
   if (group === "lower") return "Ben/rumpa";
@@ -44,6 +66,8 @@ function ExerciseDetailPage() {
     );
   }
 
+  const imageSrc = EXERCISE_IMAGES[exercise.id];
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-md px-5 pb-16 pt-8">
@@ -55,17 +79,25 @@ function ExerciseDetailPage() {
           <div className="w-9" />
         </header>
 
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/15">
-            <Dumbbell className="h-5 w-5 text-primary-foreground/80" />
+        <section className="rounded-3xl bg-card p-5 ring-1 ring-border/60">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/15">
+              <Dumbbell className="h-5 w-5 text-primary-foreground/80" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight">{exercise.name}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">{muscleLabel(exercise.muscleGroup)}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">{exercise.name}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{muscleLabel(exercise.muscleGroup)}</p>
-          </div>
-        </div>
 
-        <section className="mt-6 rounded-3xl bg-card p-6 ring-1 ring-border/60">
+          {imageSrc && (
+            <div className="mt-5 flex h-56 items-center justify-center overflow-hidden rounded-[1.75rem] bg-secondary/45 p-3 ring-1 ring-border/40">
+              <img src={imageSrc} alt={exercise.name} className="h-full w-full rounded-[1.25rem] object-contain" loading="lazy" />
+            </div>
+          )}
+        </section>
+
+        <section className="mt-4 rounded-3xl bg-card p-6 ring-1 ring-border/60">
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Aktuell dos</p>
           <p className="mt-2 text-5xl font-semibold tracking-tight">{exerciseDose(exercise, state.intensity)}</p>
           <p className="mt-1 text-sm text-muted-foreground">Nivå: {intensityLabel(state.intensity)}</p>
