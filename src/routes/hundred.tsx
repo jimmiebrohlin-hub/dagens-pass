@@ -8,6 +8,8 @@ import { APP_NAME } from "@/lib/version";
 
 const GOAL = 100;
 const START_REPS = 8;
+const MIN_REPS = 4;
+const MAX_REPS = 34;
 const DEFAULT_REST_SECONDS = 45;
 const EXERCISE_IMAGES: Record<string, string> = {
   armhavningar: "/exercises/armhavningar.png",
@@ -29,11 +31,18 @@ export const Route = createFileRoute("/hundred")({
 type Phase = "pick" | "do" | "rest" | "rate" | "done";
 
 function challengePlan(baseReps: number): [number, number, number] {
-  return [baseReps, Math.min(34, baseReps + 4), Math.max(4, baseReps - 2)];
+  return [baseReps, Math.min(MAX_REPS, baseReps + 4), Math.max(MIN_REPS, baseReps - 2)];
 }
 
 function planTotal(plan: number[]) {
   return plan.reduce((sum, reps) => sum + reps, 0);
+}
+
+function nextBaseForFeedback(current: number, level: HundredFeedback) {
+  if (level === "latt") return Math.min(MAX_REPS, current + 2);
+  if (level === "medel") return Math.min(MAX_REPS, current + 1);
+  if (level === "misslyckat") return Math.max(MIN_REPS, current - 2);
+  return current;
 }
 
 function feedbackHint(level: HundredFeedback) {
@@ -51,6 +60,7 @@ function HundredPage() {
   const [setIndex, setSetIndex] = useState(0);
   const [restSeconds, setRestSeconds] = useState(0);
   const [lastFeedback, setLastFeedback] = useState<HundredFeedback | null>(null);
+  const [nextBaseReps, setNextBaseReps] = useState<number | null>(null);
 
   const eligible = EXERCISES.filter((e) => e.hundredEligible);
   const savedActive = state.activeHundredId && getExercise(state.activeHundredId)?.hundredEligible ? state.activeHundredId : undefined;
@@ -61,6 +71,8 @@ function HundredPage() {
   const restDuration = state.restSeconds ?? DEFAULT_REST_SECONDS;
   const currentReps = plan[setIndex] ?? plan[0];
   const nextSet = setIndex + 2;
+  const doneBaseReps = nextBaseReps ?? reps;
+  const donePlan = challengePlan(doneBaseReps);
 
   useEffect(() => {
     if (manualPick || activeId || phase !== "pick" || !savedActive) return;
@@ -91,6 +103,7 @@ function HundredPage() {
     setSetIndex(0);
     setRestSeconds(0);
     setLastFeedback(null);
+    setNextBaseReps(null);
     setPhase("do");
   }
 
@@ -99,6 +112,7 @@ function HundredPage() {
     setActiveId(null);
     setSetIndex(0);
     setRestSeconds(0);
+    setNextBaseReps(null);
     setPhase("pick");
   }
 
@@ -122,22 +136,16 @@ function HundredPage() {
 
   function rate(level: HundredFeedback) {
     if (!active) return;
+    const currentBase = reps;
+    const nextBase = nextBaseForFeedback(currentBase, level);
     setLastFeedback(level);
-    setState((s) => {
-      const cur = s.hundred[active.id]?.reps ?? START_REPS;
-      const next =
-        level === "latt"
-          ? Math.min(34, cur + 2)
-          : level === "medel"
-            ? Math.min(34, cur + 1)
-            : level === "misslyckat"
-              ? Math.max(START_REPS, cur - 2)
-              : cur;
-      return addSession(
+    setNextBaseReps(nextBase);
+    setState((s) =>
+      addSession(
         {
           ...s,
           activeHundredId: active.id,
-          hundred: { ...s.hundred, [active.id]: { reps: next } },
+          hundred: { ...s.hundred, [active.id]: { reps: nextBase } },
         },
         {
           mode: "hundred",
@@ -145,8 +153,8 @@ function HundredPage() {
           feedback: level,
           totalReps: total,
         },
-      );
-    });
+      ),
+    );
     setSetIndex(0);
     setRestSeconds(0);
     setPhase("done");
@@ -240,7 +248,7 @@ function HundredPage() {
                 { id: "latt", label: "Lätt", hint: "+2 i basnivå" },
                 { id: "medel", label: "Medel", hint: "+1 i basnivå" },
                 { id: "svart", label: "Svårt", hint: "Samma nivå nästa gång" },
-                { id: "misslyckat", label: "Klarade inte", hint: "-2 i basnivå nästa gång" },
+                { id: "misslyckat", label: "Klarade inte", hint: "-2 i basnivå" },
               ] as const).map((opt) => (
                 <button key={opt.id} onClick={() => rate(opt.id)} className="w-full rounded-2xl bg-card p-5 text-left ring-1 ring-border/60 active:scale-[0.99]">
                   <p className="text-lg font-medium">{opt.label}</p>
@@ -249,7 +257,7 @@ function HundredPage() {
               ))}
             </div>
             <p className="mt-4 rounded-2xl bg-secondary/60 p-4 text-xs text-muted-foreground">
-              {feedbackHint("misslyckat")} Målet är totalt 100 reps i formatet igång + toppset + back-off.
+              Målet är totalt 100 reps i formatet igång + toppset + back-off. Lätt/medel ökar, svårt står still och klarade inte sänker.
             </p>
           </>
         )}
@@ -261,6 +269,7 @@ function HundredPage() {
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight">Sparat</h1>
             <p className="mt-2 text-sm text-muted-foreground">{active.name} · {total} reps · {lastFeedback ? feedbackHint(lastFeedback) : "Progressionen är uppdaterad."}</p>
+            <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm font-medium text-secondary-foreground">Nästa gång: {donePlan.join(" + ")} reps</p>
             <button onClick={() => start(active.id, false)} className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99]">
               <RotateCcw className="h-4 w-4" /> Kör igen
             </button>
@@ -298,9 +307,9 @@ function ChallengeSetView({ active, plan, setIndex, total, currentReps, restDura
           </div>
         </div>
         <div className="mt-4 flex items-center justify-center gap-2">
-          {plan.map((reps, index) => (
+          {plan.map((setReps, index) => (
             <span key={index} className={`flex h-9 min-w-9 items-center justify-center rounded-full px-3 text-sm font-semibold ${index < setIndex ? "bg-primary text-primary-foreground" : index === setIndex ? "bg-primary/20 text-primary ring-2 ring-primary/25" : "bg-secondary text-muted-foreground"}`}>
-              {index < setIndex ? "✓" : reps}
+              {index < setIndex ? "✓" : setReps}
             </span>
           ))}
         </div>
