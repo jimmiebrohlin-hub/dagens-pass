@@ -67,15 +67,20 @@ export function HomePage() {
             ))}
           </ul>
           <Link to="/workout" search={{ mode: "dagens3" }} className="mt-6 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-base font-medium text-primary-foreground shadow-sm transition active:scale-[0.99]">
-            {dailyDoneToday ? "Gör igen" : "Starta dagens 3"}
+            Dagens 3
           </Link>
         </section>
 
         <div className="grid grid-cols-2 gap-3">
           <Link to="/workout" search={{ mode: "halvt" }} className="group rounded-2xl bg-card p-4 ring-1 ring-border/60 transition active:scale-[0.99]">
             <Target className="h-5 w-5 text-primary" />
-            <p className="mt-3 text-sm font-medium">Halvt pass</p>
-            <p className="text-xs text-muted-foreground">5 övningar · {intensityLabel(state.intensity).toLowerCase()}</p>
+            <p className="mt-3 text-sm font-medium">Litet blandpass</p>
+            <p className="text-xs text-muted-foreground">ca 10 övningar · {intensityLabel(state.intensity).toLowerCase()}</p>
+          </Link>
+          <Link to="/workout" search={{ mode: "stort" }} className="group rounded-2xl bg-card p-4 ring-1 ring-border/60 transition active:scale-[0.99]">
+            <Target className="h-5 w-5 text-primary" />
+            <p className="mt-3 text-sm font-medium">Stort blandpass</p>
+            <p className="text-xs text-muted-foreground">ca 20 övningar · {intensityLabel(state.intensity).toLowerCase()}</p>
           </Link>
           <Link to="/hundred" className="group rounded-2xl bg-card p-4 ring-1 ring-border/60 transition active:scale-[0.99]">
             <Hash className="h-5 w-5 text-primary" />
