@@ -113,6 +113,25 @@ export async function createSharedStreak(name = "Vår streak"): Promise<SharedSt
   return loaded;
 }
 
+export async function joinSharedStreak(inviteCode: string): Promise<SharedStreak> {
+  if (!supabase) throw new Error("Supabase är inte konfigurerat.");
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Du behöver vara inloggad först.");
+
+  const code = inviteCode.trim().toUpperCase();
+  if (code.length < 4) throw new Error("Skriv in en giltig kod.");
+
+  const { error } = await supabase.rpc("join_shared_streak_by_code", { p_invite_code: code });
+  if (error) {
+    if (error.message.includes("invite_not_found")) throw new Error("Koden hittades inte.");
+    throw error;
+  }
+
+  const loaded = await loadMySharedStreak();
+  if (!loaded) throw new Error("Du gick med, men streaken kunde inte laddas.");
+  return loaded;
+}
+
 export function isMyTurn(streak: SharedStreak, userId: string) {
   return streak.current_turn_user_id === userId;
 }
