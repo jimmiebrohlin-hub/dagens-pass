@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Dumbbell } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, Dumbbell, Play } from "lucide-react";
 import { exerciseDose, getExercise, intensityLabel } from "@/lib/exercises";
 import { useAppState, type WorkoutIntensity } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
@@ -34,6 +34,13 @@ function muscleLabel(group: string) {
   return "Core/rygg";
 }
 
+function instructionSteps(instruction: string): string[] {
+  return instruction
+    .split(/\.\s+/)
+    .map((part) => part.trim().replace(/\.$/, ""))
+    .filter(Boolean);
+}
+
 export const Route = createFileRoute("/exercise/$exerciseId")({
   head: ({ params }) => {
     const exercise = getExercise(params.exerciseId);
@@ -46,6 +53,12 @@ function ExerciseDetailPage() {
   const { exerciseId } = Route.useParams();
   const [state] = useAppState();
   const exercise = getExercise(exerciseId);
+
+  function goBack() {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back();
+    }
+  }
 
   if (!exercise) {
     return (
@@ -67,16 +80,19 @@ function ExerciseDetailPage() {
   }
 
   const imageSrc = EXERCISE_IMAGES[exercise.id];
+  const steps = instructionSteps(exercise.instruction);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-md px-5 pb-16 pt-8">
         <header className="mb-6 flex items-center justify-between">
-          <Link to="/settings" className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary">
+          <button onClick={goBack} className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary" aria-label="Tillbaka">
             <ArrowLeft className="h-4 w-4" />
-          </Link>
+          </button>
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Övning</p>
-          <div className="w-9" />
+          <Link to="/settings" className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-xs font-medium text-secondary-foreground">
+            Alla
+          </Link>
         </header>
 
         <section className="rounded-3xl bg-card p-5 ring-1 ring-border/60">
@@ -98,10 +114,29 @@ function ExerciseDetailPage() {
         </section>
 
         <section className="mt-4 rounded-3xl bg-card p-6 ring-1 ring-border/60">
-          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Aktuell dos</p>
-          <p className="mt-2 text-5xl font-semibold tracking-tight">{exerciseDose(exercise, state.intensity)}</p>
-          <p className="mt-1 text-sm text-muted-foreground">Nivå: {intensityLabel(state.intensity)}</p>
-          <p className="mt-5 text-[15px] leading-relaxed text-muted-foreground">{exercise.instruction}</p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Så gör du</p>
+              <p className="mt-2 text-4xl font-semibold tracking-tight">{exerciseDose(exercise, state.intensity)}</p>
+              <p className="mt-1 text-sm text-muted-foreground">Nivå: {intensityLabel(state.intensity)}</p>
+            </div>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/15">
+              <Play className="h-5 w-5 text-primary" />
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {steps.length > 0 ? (
+              steps.map((step, index) => (
+                <div key={step} className="flex gap-3 rounded-2xl bg-secondary/60 p-4">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">{index + 1}</span>
+                  <p className="text-[15px] leading-relaxed text-muted-foreground">{step}.</p>
+                </div>
+              ))
+            ) : (
+              <p className="rounded-2xl bg-secondary/60 p-4 text-[15px] leading-relaxed text-muted-foreground">{exercise.instruction}</p>
+            )}
+          </div>
         </section>
 
         <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
@@ -118,17 +153,27 @@ function ExerciseDetailPage() {
 
         <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
           <p className="text-sm font-medium">Varianter</p>
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 grid gap-3">
             {exercise.easier && (
               <div className="rounded-2xl bg-secondary/60 p-4">
-                <p className="text-sm font-medium">Lättare</p>
-                <p className="mt-1 text-sm text-muted-foreground">{exercise.easier}</p>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary">
+                    <ArrowDown className="h-5 w-5" />
+                  </span>
+                  <p className="text-sm font-semibold">Lättare</p>
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground">{exercise.easier}</p>
               </div>
             )}
             {exercise.harder && (
               <div className="rounded-2xl bg-secondary/60 p-4">
-                <p className="text-sm font-medium">Svårare</p>
-                <p className="mt-1 text-sm text-muted-foreground">{exercise.harder}</p>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary">
+                    <ArrowUp className="h-5 w-5" />
+                  </span>
+                  <p className="text-sm font-semibold">Svårare</p>
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground">{exercise.harder}</p>
               </div>
             )}
           </div>
@@ -137,7 +182,7 @@ function ExerciseDetailPage() {
         <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
           <p className="text-sm font-medium">100 reps</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {exercise.hundredEligible ? "Den här övningen kan användas i 100 reps-läget." : "Den här övningen används inte i 100 reps-läget just nu."}
+            {exercise.hundredEligible ? "Kan användas i 100 reps-läget." : "Används inte i 100 reps-läget just nu."}
           </p>
         </section>
       </div>
