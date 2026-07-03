@@ -4,7 +4,7 @@ import { DEFAULT_SOUND, type SoundSettings } from "./sound";
 
 export type { WorkoutIntensity } from "./intensity";
 export type { SoundSettings } from "./sound";
-export type WorkoutMode = "dagens3" | "halvt" | "hundred";
+export type WorkoutMode = "dagens3" | "halvt" | "stort" | "hundred";
 export type ExerciseStatus = "done" | "skipped";
 export type HundredFeedback = "latt" | "medel" | "svart" | "misslyckat";
 
