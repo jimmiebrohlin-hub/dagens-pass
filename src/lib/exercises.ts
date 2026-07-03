@@ -79,17 +79,28 @@ export function pickDailyThree(seed: string, options: PickOptions = {}): Exercis
   return picked;
 }
 
-export function pickHalf(seed: string, options: PickOptions = {}): Exercise[] {
-  const lower = EXERCISES.filter((e) => e.muscleGroup === "lower");
-  const upper = EXERCISES.filter((e) => e.muscleGroup === "upper");
-  const core = EXERCISES.filter((e) => e.muscleGroup === "core");
+function pickMixed(seed: string, count: number, options: PickOptions = {}): Exercise[] {
+  const groups: MuscleGroup[] = ["lower", "upper", "core"];
   const picked: Exercise[] = [];
-  const plan: Array<[Exercise[], string]> = [[lower, "lower-1"], [upper, "upper-1"], [core, "core-1"], [lower, "lower-2"], [core, "core-2"]];
-  for (const [pool, suffix] of plan) {
-    const exercise = takeSeeded(pool, `${seed}:half:${suffix}`, picked.map((e) => e.id), options);
+  for (let i = 0; i < count; i++) {
+    const group = groups[i % groups.length];
+    const pool = EXERCISES.filter((e) => e.muscleGroup === group);
+    const exercise = takeSeeded(pool, `${seed}:mixed:${i}:${group}`, picked.map((e) => e.id), options) ?? takeSeeded(EXERCISES, `${seed}:mixed:${i}:any`, [], options);
     if (exercise) picked.push({ ...exercise, sets: 2 });
   }
   return picked;
+}
+
+export function pickSmall(seed: string, options: PickOptions = {}): Exercise[] {
+  return pickMixed(seed, 10, options);
+}
+
+export function pickLarge(seed: string, options: PickOptions = {}): Exercise[] {
+  return pickMixed(seed, 20, options);
+}
+
+export function pickHalf(seed: string, options: PickOptions = {}): Exercise[] {
+  return pickSmall(seed, options);
 }
 
 export function applyIntensity(exercise: Exercise, intensity: WorkoutIntensity = "normal"): Exercise {
