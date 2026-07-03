@@ -237,10 +237,6 @@ function WorkoutPage() {
                 <p className="mt-3 text-xs text-muted-foreground">Tryck på timern för att gå vidare direkt.</p>
                 <p className="mt-6 text-sm text-muted-foreground">Nästa</p>
                 <p className="mt-1 text-2xl font-semibold tracking-tight">{nextLabel}</p>
-                <p className="mt-4 rounded-2xl bg-primary/15 p-3 text-sm font-medium text-primary">{state.sound.enabled ? "Ljudsignal när vilan är klar" : "Ljudsignal är av"}</p>
-                <button onClick={skipRest} className="mt-6 h-12 w-full rounded-2xl bg-secondary text-base font-medium text-secondary-foreground active:scale-[0.99]">
-                  Hoppa över vila
-                </button>
               </section>
             </main>
           ) : (
