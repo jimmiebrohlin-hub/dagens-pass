@@ -72,7 +72,9 @@ export async function uploadLocalDataToCloud() {
   if (deleteSessionsError) throw deleteSessionsError;
 
   if (state.sessions.length > 0) {
-    const { error } = await supabase.from("workout_sessions").insert(state.sessions.map((session) => sessionToRow(user.id, session)));
+    const { error } = await supabase
+      .from("workout_sessions")
+      .insert(state.sessions.map((session) => sessionToRow(user.id, session)) as any);
     if (error) throw error;
   }
 
@@ -119,7 +121,7 @@ export async function downloadCloudDataToLocal(): Promise<AppState> {
       favoriteIds: preferences?.favorite_ids ?? base.preferences.favoriteIds,
       blockedIds: preferences?.blocked_ids ?? base.preferences.blockedIds,
     },
-    intensity: settings?.intensity ?? base.intensity,
+    intensity: (settings?.intensity as typeof base.intensity) ?? base.intensity,
     sound: {
       enabled: settings?.sound_enabled ?? base.sound.enabled,
       vibration: settings?.vibration_enabled ?? base.sound.vibration,
