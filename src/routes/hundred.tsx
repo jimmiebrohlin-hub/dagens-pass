@@ -5,22 +5,29 @@ import { EXERCISES, getExercise } from "@/lib/exercises";
 import { useAppState, addSession, type HundredFeedback } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
 
-const GOAL = 102;
-const SETS = 3;
+const GOAL = 100;
 const START_REPS = 8;
 
 export const Route = createFileRoute("/hundred")({
-  head: () => ({ meta: [{ title: `100 reps — ${APP_NAME}` }] }),
+  head: () => ({ meta: [{ title: `100 challenge — ${APP_NAME}` }] }),
   component: HundredPage,
 });
 
 type Phase = "pick" | "do" | "rate";
 
+function challengePlan(baseReps: number): [number, number, number] {
+  return [baseReps, Math.min(34, baseReps + 4), Math.max(4, baseReps - 2)];
+}
+
+function planTotal(plan: number[]) {
+  return plan.reduce((sum, reps) => sum + reps, 0);
+}
+
 function feedbackHint(level: HundredFeedback) {
-  if (level === "latt") return "Nästa gång ökar appen med 2 reps per set.";
-  if (level === "medel") return "Nästa gång ökar appen med 1 rep per set.";
+  if (level === "latt") return "Nästa gång ökar appen med 2 reps i basnivå.";
+  if (level === "medel") return "Nästa gång ökar appen med 1 rep i basnivå.";
   if (level === "svart") return "Nästa gång behåller appen samma nivå.";
-  return "Nästa gång sänker appen nivån med 2 reps per set.";
+  return "Nästa gång sänker appen basnivån med 2 reps.";
 }
 
 function HundredPage() {
@@ -31,7 +38,8 @@ function HundredPage() {
   const eligible = EXERCISES.filter((e) => e.hundredEligible);
   const active = activeId ? getExercise(activeId) : null;
   const reps = active ? state.hundred[active.id]?.reps ?? START_REPS : START_REPS;
-  const total = reps * SETS;
+  const plan = challengePlan(reps);
+  const total = planTotal(plan);
 
   function start(id: string) {
     setActiveId(id);
@@ -74,30 +82,32 @@ function HundredPage() {
           <Link to="/" className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary">
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">100 reps</p>
+          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">100 challenge</p>
           <div className="w-9" />
         </header>
 
         {phase === "pick" && (
           <>
-            <h1 className="text-3xl font-semibold tracking-tight">Vägen till 100</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">100 challenge</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Välj en övning. Du tränar 3 set och målet är 3 × 34 = 102 reps.
+              Tre set med olika reps: först igång, sedan toppset, sedan back-off. Exempel: 10 + 14 + 8.
             </p>
             <ul className="mt-6 space-y-2">
               {eligible.map((e) => {
                 const r = state.hundred[e.id]?.reps ?? START_REPS;
-                const pct = Math.min(100, Math.round(((r * SETS) / GOAL) * 100));
+                const p = challengePlan(r);
+                const t = planTotal(p);
+                const pct = Math.min(100, Math.round((t / GOAL) * 100));
                 return (
                   <li key={e.id}>
                     <button
                       onClick={() => start(e.id)}
                       className="w-full rounded-2xl bg-card p-4 text-left ring-1 ring-border/60 transition active:scale-[0.99]"
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-3">
                         <span className="font-medium">{e.name}</span>
                         <span className="text-sm text-muted-foreground">
-                          3 × {r}
+                          {p.join(" + ")}
                         </span>
                       </div>
                       <div className="mt-3 h-1.5 w-full rounded-full bg-muted">
@@ -106,7 +116,7 @@ function HundredPage() {
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <p className="mt-1.5 text-xs text-muted-foreground">{pct}% till 102</p>
+                      <p className="mt-1.5 text-xs text-muted-foreground">{t} reps · {pct}% till 100</p>
                     </button>
                   </li>
                 );
@@ -120,12 +130,16 @@ function HundredPage() {
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Pågående</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight">{active.name}</h1>
             <div className="mt-6 rounded-3xl bg-card p-6 ring-1 ring-border/60">
-              <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-semibold tracking-tight">3</span>
-                <span className="text-muted-foreground">set ×</span>
-                <span className="text-5xl font-semibold tracking-tight">{reps}</span>
+              <div className="grid grid-cols-3 gap-2">
+                {plan.map((setReps, index) => (
+                  <div key={index} className={`rounded-2xl p-4 text-center ${index === 1 ? "bg-primary text-primary-foreground" : "bg-secondary"}`}>
+                    <p className={`text-xs font-medium ${index === 1 ? "text-primary-foreground/80" : "text-muted-foreground"}`}>Set {index + 1}</p>
+                    <p className="mt-1 text-4xl font-semibold tracking-tight">{setReps}</p>
+                    <p className={`mt-0.5 text-xs ${index === 1 ? "text-primary-foreground/80" : "text-muted-foreground"}`}>reps</p>
+                  </div>
+                ))}
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">Totalt {total} reps</p>
+              <p className="mt-3 text-sm text-muted-foreground">Totalt {total} reps. Set 2 är toppsetet, set 3 är back-off.</p>
               <p className="mt-5 text-[15px] leading-relaxed text-muted-foreground">
                 {active.instruction}
               </p>
@@ -143,15 +157,15 @@ function HundredPage() {
           <>
             <h1 className="text-3xl font-semibold tracking-tight">Hur kändes det?</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Nästa gång justeras antalet reps per set.
+              Nästa gång justeras basnivån och appen räknar fram nya tre set.
             </p>
             <div className="mt-6 space-y-3">
               {(
                 [
-                  { id: "latt", label: "Lätt", hint: "+2 reps per set" },
-                  { id: "medel", label: "Medel", hint: "+1 rep per set" },
-                  { id: "svart", label: "Svårt", hint: "Samma reps nästa gång" },
-                  { id: "misslyckat", label: "Klarade inte", hint: "-2 reps per set nästa gång" },
+                  { id: "latt", label: "Lätt", hint: "+2 i basnivå" },
+                  { id: "medel", label: "Medel", hint: "+1 i basnivå" },
+                  { id: "svart", label: "Svårt", hint: "Samma nivå nästa gång" },
+                  { id: "misslyckat", label: "Klarade inte", hint: "-2 i basnivå nästa gång" },
                 ] as const
               ).map((opt) => (
                 <button
@@ -165,7 +179,7 @@ function HundredPage() {
               ))}
             </div>
             <p className="mt-4 rounded-2xl bg-secondary/60 p-4 text-xs text-muted-foreground">
-              {feedbackHint("misslyckat")} Miniminivån är 3 × {START_REPS}.
+              {feedbackHint("misslyckat")} Målet är totalt 100 reps i formatet igång + toppset + back-off.
             </p>
           </>
         )}
