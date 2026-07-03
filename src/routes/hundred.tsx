@@ -69,7 +69,7 @@ function HundredPage() {
   const plan = challengePlan(reps);
   const total = planTotal(plan);
   const restDuration = state.restSeconds ?? DEFAULT_REST_SECONDS;
-  const restProgressPct = restDuration > 0 ? Math.max(0, Math.min(100, (restSeconds / restDuration) * 100)) : 0;
+  const restProgressPct = restDuration > 0 ? Math.max(0, Math.min(100, ((restDuration - restSeconds) / restDuration) * 100)) : 0;
   const currentReps = plan[setIndex] ?? plan[0];
   const nextSet = setIndex + 2;
   const doneBaseReps = nextBaseReps ?? reps;
