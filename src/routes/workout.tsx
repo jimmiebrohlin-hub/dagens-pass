@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, SkipForward, Info } from "lucide-react";
+import { ArrowLeft, Check, SkipForward, Info, Volume2, VolumeX } from "lucide-react";
 import { applyIntensity, exerciseDose, exerciseSetDose, intensityLabel, pickDailyThree, pickLarge, pickSmall, type Exercise } from "@/lib/exercises";
 import { playTimerDoneCue, unlockTimerSound } from "@/lib/sound";
-import { todayISO, useAppState, addSession } from "@/lib/storage";
+import { todayISO, useAppState, addSession, updateSound } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
 
 type Mode = "dagens3" | "halvt" | "stort";
@@ -117,6 +117,10 @@ function WorkoutPage() {
     setRestSeconds(0);
   }
 
+  function toggleSound() {
+    setState((s) => updateSound(s, { enabled: !s.sound.enabled }));
+  }
+
   function completeSet() {
     if (!current || !adjusted || phase !== "exercise") return;
     const hasMoreSets = setNumberIndex + 1 < adjusted.sets;
@@ -208,16 +212,22 @@ function WorkoutPage() {
           phase === "rest" ? (
             <main className="flex flex-1 flex-col justify-center">
               <section className="rounded-[2rem] bg-card p-7 text-center ring-1 ring-border/60">
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Vila</p>
-                <div className="mx-auto mt-5 flex h-40 w-40 items-center justify-center rounded-full bg-secondary ring-8 ring-primary/20">
+                <div className="flex items-center justify-center gap-3">
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Vila</p>
+                  <button onClick={toggleSound} className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-secondary-foreground active:scale-[0.98]" aria-label={state.sound.enabled ? "Stäng av ljud" : "Slå på ljud"}>
+                    {state.sound.enabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                  </button>
+                </div>
+                <button onClick={skipRest} className="mx-auto mt-5 flex h-40 w-40 items-center justify-center rounded-full bg-secondary ring-8 ring-primary/20 active:scale-[0.98]" aria-label="Avsluta vilan och gå vidare">
                   <div>
                     <p className="text-6xl font-semibold leading-none tracking-tight">{restSeconds}</p>
                     <p className="mt-1 text-sm text-muted-foreground">sek kvar</p>
                   </div>
-                </div>
+                </button>
+                <p className="mt-3 text-xs text-muted-foreground">Tryck på timern för att gå vidare direkt.</p>
                 <p className="mt-6 text-sm text-muted-foreground">Nästa</p>
                 <p className="mt-1 text-2xl font-semibold tracking-tight">{nextLabel}</p>
-                <p className="mt-4 rounded-2xl bg-primary/15 p-3 text-sm font-medium text-primary">Ljudsignal när vilan är klar</p>
+                <p className="mt-4 rounded-2xl bg-primary/15 p-3 text-sm font-medium text-primary">{state.sound.enabled ? "Ljudsignal när vilan är klar" : "Ljudsignal är av"}</p>
                 <button onClick={skipRest} className="mt-6 h-12 w-full rounded-2xl bg-secondary text-base font-medium text-secondary-foreground active:scale-[0.99]">
                   Hoppa över vila
                 </button>
