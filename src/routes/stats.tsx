@@ -14,7 +14,8 @@ export const Route = createFileRoute("/stats")({
 
 function modeLabel(mode: string) {
   if (mode === "dagens3") return "Dagens 3";
-  if (mode === "halvt") return "Halvt pass";
+  if (mode === "halvt") return "Litet blandpass";
+  if (mode === "stort") return "Stort blandpass";
   if (mode === "hundred") return "100 reps";
   return mode;
 }
