@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Flame, Hand, LogIn, Plus, Users } from "lucide-react";
+import { ArrowLeft, Flame, Hand, LogIn, Plus, UserPlus, Users } from "lucide-react";
 import { signInWithGoogle, useAuthState } from "@/lib/auth";
-import { createSharedStreak, currentTurnLabel, loadMySharedStreak, type SharedStreak } from "@/lib/sharedStreaks";
+import { createSharedStreak, currentTurnLabel, joinSharedStreak, loadMySharedStreak, type SharedStreak } from "@/lib/sharedStreaks";
 import { APP_NAME } from "@/lib/version";
 
 export const Route = createFileRoute("/streak")({
@@ -15,6 +15,7 @@ function StreakPage() {
   const [streak, setStreak] = useState<SharedStreak | null>(null);
   const [loadingStreak, setLoadingStreak] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,8 +57,24 @@ function StreakPage() {
     }
   }
 
+  async function join() {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const result = await joinSharedStreak(joinCode);
+      setStreak(result);
+      setJoinCode("");
+      setMessage("Du gick med i streaken.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Kunde inte gå med i streak.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const turnLabel = streak && auth.user ? currentTurnLabel(streak, auth.user.id) : "Bollen visas när streaken är skapad.";
-  const memberCount = streak?.members.filter((member) => member.status === "active").length ?? 0;
+  const activeMembers = streak?.members.filter((member) => member.status === "active") ?? [];
+  const memberCount = activeMembers.length;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -126,10 +143,27 @@ function StreakPage() {
           <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
             <p className="text-sm font-medium">Skapa gemensam streak</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Du får en kod att dela. I första versionen blir bollen din direkt.
+              Du får en kod att dela. Bollen hamnar hos dig direkt.
             </p>
             <button disabled={busy} onClick={create} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99] disabled:opacity-60">
               <Plus className="h-4 w-4" /> Skapa streak
+            </button>
+          </section>
+        )}
+
+        {auth.configured && auth.user && !loadingStreak && !streak && (
+          <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
+            <p className="text-sm font-medium">Gå med med kod</p>
+            <p className="mt-1 text-sm text-muted-foreground">Skriv in koden du fått av din träningskompis.</p>
+            <input
+              value={joinCode}
+              onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
+              placeholder="ABC123"
+              className="mt-4 h-12 w-full rounded-2xl bg-secondary px-4 text-center text-lg font-semibold uppercase tracking-[0.18em] text-secondary-foreground outline-none ring-1 ring-border/60 focus:ring-primary/50"
+              maxLength={12}
+            />
+            <button disabled={busy || joinCode.trim().length < 4} onClick={join} className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-base font-medium text-secondary-foreground active:scale-[0.99] disabled:opacity-60">
+              <UserPlus className="h-4 w-4" /> Gå med
             </button>
           </section>
         )}
@@ -146,9 +180,17 @@ function StreakPage() {
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary">
                 <Users className="h-5 w-5 text-primary" />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">{streak.name}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{memberCount} medlem{memberCount === 1 ? "" : "mar"}</p>
+                <ul className="mt-3 space-y-1.5">
+                  {activeMembers.map((member) => (
+                    <li key={member.user_id} className="flex items-center justify-between gap-3 rounded-2xl bg-secondary/60 px-3 py-2 text-sm">
+                      <span className="truncate">{member.display_name ?? "Medlem"}</span>
+                      {member.user_id === streak.current_turn_user_id && <span className="shrink-0 text-xs font-medium text-primary">Bollen</span>}
+                    </li>
+                  ))}
+                </ul>
                 <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Inbjudningskod</p>
                 <p className="mt-1 rounded-2xl bg-secondary px-4 py-3 text-center text-2xl font-semibold tracking-[0.2em] text-secondary-foreground">{streak.invite_code}</p>
               </div>
