@@ -25,7 +25,7 @@ function SettingsPage() {
 
   async function testSound() {
     await unlockTimerSound();
-    await playTimerDoneCue(state.sound);
+    await playTimerDoneCue({ enabled: true, vibration: state.sound.vibration });
   }
 
   return (
@@ -134,7 +134,7 @@ function SettingsPage() {
                   <p className={`mt-0.5 text-[11px] ${state.sound.vibration ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{state.sound.vibration ? "På" : "Av"}</p>
                 </button>
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">På iPhone behöver ljud ofta aktiveras genom att du trycker i appen först. Test-knappen gör det enklare.</p>
+              <p className="mt-3 text-xs text-muted-foreground">Test-knappen spelar alltid upp ett ljud. Ljudvalet ovan styr bara signalen efter vila.</p>
             </div>
           </div>
         </section>
