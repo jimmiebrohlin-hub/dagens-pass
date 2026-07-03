@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check, Info, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, Check, Info, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import { EXERCISES, getExercise, type Exercise } from "@/lib/exercises";
 import { playTimerDoneCue, unlockTimerSound } from "@/lib/sound";
-import { useAppState, addSession, updateSound, type HundredFeedback } from "@/lib/storage";
+import { useAppState, addSession, updateActiveHundredId, updateSound, type HundredFeedback } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
 
 const GOAL = 100;
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/hundred")({
   component: HundredPage,
 });
 
-type Phase = "pick" | "do" | "rest" | "rate";
+type Phase = "pick" | "do" | "rest" | "rate" | "done";
 
 function challengePlan(baseReps: number): [number, number, number] {
   return [baseReps, Math.min(34, baseReps + 4), Math.max(4, baseReps - 2)];
@@ -47,10 +47,13 @@ function HundredPage() {
   const [state, setState] = useAppState();
   const [phase, setPhase] = useState<Phase>("pick");
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [manualPick, setManualPick] = useState(false);
   const [setIndex, setSetIndex] = useState(0);
   const [restSeconds, setRestSeconds] = useState(0);
+  const [lastFeedback, setLastFeedback] = useState<HundredFeedback | null>(null);
 
   const eligible = EXERCISES.filter((e) => e.hundredEligible);
+  const savedActive = state.activeHundredId && getExercise(state.activeHundredId)?.hundredEligible ? state.activeHundredId : undefined;
   const active = activeId ? getExercise(activeId) : null;
   const reps = active ? state.hundred[active.id]?.reps ?? START_REPS : START_REPS;
   const plan = challengePlan(reps);
@@ -58,6 +61,11 @@ function HundredPage() {
   const restDuration = state.restSeconds ?? DEFAULT_REST_SECONDS;
   const currentReps = plan[setIndex] ?? plan[0];
   const nextSet = setIndex + 2;
+
+  useEffect(() => {
+    if (manualPick || activeId || phase !== "pick" || !savedActive) return;
+    start(savedActive, false);
+  }, [manualPick, activeId, phase, savedActive]);
 
   useEffect(() => {
     if (phase !== "rest" || restSeconds <= 0) return;
@@ -74,11 +82,24 @@ function HundredPage() {
     setPhase("do");
   }, [phase, restSeconds, state.sound]);
 
-  function start(id: string) {
+  function start(id: string, saveAsActive = true) {
+    if (saveAsActive) {
+      setState((s) => updateActiveHundredId(s, id));
+    }
+    setManualPick(false);
     setActiveId(id);
     setSetIndex(0);
     setRestSeconds(0);
+    setLastFeedback(null);
     setPhase("do");
+  }
+
+  function chooseChallenge() {
+    setManualPick(true);
+    setActiveId(null);
+    setSetIndex(0);
+    setRestSeconds(0);
+    setPhase("pick");
   }
 
   function completeSet() {
@@ -101,6 +122,7 @@ function HundredPage() {
 
   function rate(level: HundredFeedback) {
     if (!active) return;
+    setLastFeedback(level);
     setState((s) => {
       const cur = s.hundred[active.id]?.reps ?? START_REPS;
       const next =
@@ -114,6 +136,7 @@ function HundredPage() {
       return addSession(
         {
           ...s,
+          activeHundredId: active.id,
           hundred: { ...s.hundred, [active.id]: { reps: next } },
         },
         {
@@ -124,10 +147,9 @@ function HundredPage() {
         },
       );
     });
-    setPhase("pick");
-    setActiveId(null);
     setSetIndex(0);
     setRestSeconds(0);
+    setPhase("done");
   }
 
   return (
@@ -143,23 +165,32 @@ function HundredPage() {
 
         {phase === "pick" && (
           <>
-            <h1 className="text-3xl font-semibold tracking-tight">100 challenge</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">Välj challenge</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Välj en övning. Du guidas genom tre set: igång, toppset och back-off.
+              Du har en aktiv challenge i taget. Den startar direkt nästa gång du trycker på 100 challenge.
             </p>
+            {savedActive && (
+              <button onClick={() => start(savedActive, false)} className="mt-4 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99]">
+                Starta aktiv challenge
+              </button>
+            )}
             <ul className="mt-6 space-y-2">
               {eligible.map((e) => {
                 const r = state.hundred[e.id]?.reps ?? START_REPS;
                 const p = challengePlan(r);
                 const t = planTotal(p);
                 const pct = Math.min(100, Math.round((t / GOAL) * 100));
+                const isActive = savedActive === e.id;
                 return (
                   <li key={e.id}>
-                    <button onClick={() => start(e.id)} className="w-full rounded-2xl bg-card p-4 text-left ring-1 ring-border/60 transition active:scale-[0.99]">
+                    <button onClick={() => start(e.id)} className={`w-full rounded-2xl bg-card p-4 text-left ring-1 transition active:scale-[0.99] ${isActive ? "ring-primary/50" : "ring-border/60"}`}>
                       <div className="flex items-center justify-between gap-3">
                         <span className="font-medium">{e.name}</span>
-                        <span className="text-sm text-muted-foreground">{p.join(" + ")}</span>
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${isActive ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
+                          {isActive ? "Aktiv" : "Välj"}
+                        </span>
                       </div>
+                      <p className="mt-1 text-sm text-muted-foreground">{p.join(" + ")}</p>
                       <div className="mt-3 h-1.5 w-full rounded-full bg-muted">
                         <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
                       </div>
@@ -173,7 +204,7 @@ function HundredPage() {
         )}
 
         {phase === "do" && active && (
-          <ChallengeSetView active={active} plan={plan} setIndex={setIndex} total={total} currentReps={currentReps} restDuration={restDuration} onComplete={completeSet} />
+          <ChallengeSetView active={active} plan={plan} setIndex={setIndex} total={total} currentReps={currentReps} restDuration={restDuration} onComplete={completeSet} onChangeChallenge={chooseChallenge} />
         )}
 
         {phase === "rest" && active && (
@@ -222,12 +253,31 @@ function HundredPage() {
             </p>
           </>
         )}
+
+        {phase === "done" && active && (
+          <section className="rounded-3xl bg-card p-7 text-center ring-1 ring-border/60">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/20">
+              <Check className="h-6 w-6 text-primary" />
+            </div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight">Sparat</h1>
+            <p className="mt-2 text-sm text-muted-foreground">{active.name} · {total} reps · {lastFeedback ? feedbackHint(lastFeedback) : "Progressionen är uppdaterad."}</p>
+            <button onClick={() => start(active.id, false)} className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99]">
+              <RotateCcw className="h-4 w-4" /> Kör igen
+            </button>
+            <button onClick={chooseChallenge} className="mt-3 h-12 w-full rounded-2xl bg-secondary text-base font-medium text-secondary-foreground active:scale-[0.99]">
+              Byt challenge
+            </button>
+            <Link to="/" className="mt-3 flex h-12 w-full items-center justify-center rounded-2xl bg-secondary text-base font-medium text-secondary-foreground active:scale-[0.99]">
+              Till startsidan
+            </Link>
+          </section>
+        )}
       </div>
     </div>
   );
 }
 
-function ChallengeSetView({ active, plan, setIndex, total, currentReps, restDuration, onComplete }: { active: Exercise; plan: number[]; setIndex: number; total: number; currentReps: number; restDuration: number; onComplete: () => void }) {
+function ChallengeSetView({ active, plan, setIndex, total, currentReps, restDuration, onComplete, onChangeChallenge }: { active: Exercise; plan: number[]; setIndex: number; total: number; currentReps: number; restDuration: number; onComplete: () => void; onChangeChallenge: () => void }) {
   const imageSrc = EXERCISE_IMAGES[active.id];
 
   return (
@@ -235,12 +285,17 @@ function ChallengeSetView({ active, plan, setIndex, total, currentReps, restDura
       <section className="rounded-3xl bg-card p-4 ring-1 ring-border/60">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">100 challenge</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Aktiv challenge</p>
             <h1 className="mt-1 text-3xl font-semibold tracking-tight">{active.name}</h1>
           </div>
-          <Link to="/exercise/$exerciseId" params={{ exerciseId: active.id }} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground active:scale-[0.98]" aria-label="Visa övningsdetaljer">
-            <Info className="h-5 w-5" />
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <button onClick={onChangeChallenge} className="rounded-full bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground active:scale-[0.98]">
+              Byt
+            </button>
+            <Link to="/exercise/$exerciseId" params={{ exerciseId: active.id }} className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-secondary-foreground active:scale-[0.98]" aria-label="Visa övningsdetaljer">
+              <Info className="h-5 w-5" />
+            </Link>
+          </div>
         </div>
         <div className="mt-4 flex items-center justify-center gap-2">
           {plan.map((reps, index) => (
