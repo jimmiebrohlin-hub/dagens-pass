@@ -61,6 +61,7 @@ function WorkoutPage() {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
   const restDuration = state.restSeconds ?? REST_SECONDS;
+  const restProgressPct = restDuration > 0 ? Math.max(0, Math.min(100, (restSeconds / restDuration) * 100)) : 0;
   const current = exercises[exerciseIndex];
   const adjusted = current ? applyIntensity(current, state.intensity) : undefined;
   const totalSets = adjusted?.sets ?? 1;
@@ -223,8 +224,9 @@ function WorkoutPage() {
                   <div className="mt-4 flex items-center justify-between gap-3">
                     <p className="text-lg font-medium text-muted-foreground">Set {currentSet} av {totalSets}</p>
                     {phase === "rest" ? (
-                      <button onClick={skipRest} className="flex h-10 min-w-24 items-center justify-center rounded-2xl bg-secondary px-4 text-sm font-semibold text-secondary-foreground ring-2 ring-primary/20 active:scale-[0.99]" aria-label="Avsluta vilan och gå vidare">
-                        {restSeconds} sek
+                      <button onClick={skipRest} className="relative flex h-10 min-w-24 items-center justify-center overflow-hidden rounded-2xl bg-secondary px-4 text-sm font-semibold text-secondary-foreground ring-2 ring-primary/20 active:scale-[0.99]" aria-label="Avsluta vilan och gå vidare">
+                        <span className="absolute inset-y-0 left-0 rounded-2xl bg-primary/25 transition-[width] duration-300 ease-linear" style={{ width: `${restProgressPct}%` }} />
+                        <span className="relative z-10">{restSeconds} sek</span>
                       </button>
                     ) : (
                       <button onClick={completeSet} className="flex h-10 items-center justify-center gap-1.5 rounded-2xl bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm active:scale-[0.99]">
