@@ -42,6 +42,7 @@ export interface AppState {
   preferences: ExercisePreferences;
   intensity: WorkoutIntensity;
   sound: SoundSettings;
+  restSeconds: number;
 }
 
 const KEY = "vardagsstyrka-app-state-v1";
@@ -51,6 +52,7 @@ const LEGACY_STATE_EVENT = "trean:state";
 
 const DEFAULT_REMINDER: ReminderSettings = { enabled: false, time: "08:00" };
 const DEFAULT_PREFERENCES: ExercisePreferences = { favoriteIds: [], blockedIds: [] };
+const DEFAULT_REST_SECONDS = 45;
 const DEFAULT: AppState = {
   completedDates: [],
   sessions: [],
@@ -59,6 +61,7 @@ const DEFAULT: AppState = {
   preferences: DEFAULT_PREFERENCES,
   intensity: DEFAULT_INTENSITY,
   sound: DEFAULT_SOUND,
+  restSeconds: DEFAULT_REST_SECONDS,
 };
 
 function unique(ids: string[]): string[] {
@@ -74,6 +77,11 @@ function normalizeSound(value: unknown): SoundSettings {
   };
 }
 
+function normalizeRestSeconds(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return DEFAULT_REST_SECONDS;
+  return [15, 30, 45, 60, 90].includes(value) ? value : DEFAULT_REST_SECONDS;
+}
+
 export function defaultState(): AppState {
   return {
     completedDates: [],
@@ -83,6 +91,7 @@ export function defaultState(): AppState {
     preferences: { ...DEFAULT_PREFERENCES, favoriteIds: [], blockedIds: [] },
     intensity: DEFAULT_INTENSITY,
     sound: { ...DEFAULT_SOUND },
+    restSeconds: DEFAULT_REST_SECONDS,
   };
 }
 
@@ -106,6 +115,7 @@ export function loadState(): AppState {
       },
       intensity: normalizeIntensity(parsed.intensity),
       sound: normalizeSound(parsed.sound),
+      restSeconds: normalizeRestSeconds(parsed.restSeconds),
     };
   } catch {
     return defaultState();
@@ -144,6 +154,7 @@ export function createSampleState(): AppState {
     preferences: { favoriteIds: ["knaboj", "hoftlyft"], blockedIds: [] },
     intensity: DEFAULT_INTENSITY,
     sound: { ...DEFAULT_SOUND },
+    restSeconds: DEFAULT_REST_SECONDS,
     hundred: {
       knaboj: { reps: 14 },
       armhavningar: { reps: 9 },
@@ -252,6 +263,13 @@ export function updateSound(s: AppState, sound: Partial<SoundSettings>): AppStat
   return {
     ...s,
     sound: { ...s.sound, ...sound },
+  };
+}
+
+export function updateRestSeconds(s: AppState, restSeconds: number): AppState {
+  return {
+    ...s,
+    restSeconds: normalizeRestSeconds(restSeconds),
   };
 }
 
