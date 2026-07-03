@@ -176,13 +176,7 @@ function WorkoutPage() {
               <p className="text-lg font-semibold tracking-tight">{APP_NAME}</p>
               <p className="text-xs text-muted-foreground">{title} · {intensityLabel(state.intensity)}</p>
             </div>
-            {!finished && phase === "exercise" ? (
-              <button onClick={skipExercise} className="flex h-10 items-center justify-center gap-1 rounded-full bg-secondary px-3 text-xs font-medium text-secondary-foreground active:scale-[0.98]">
-                <SkipForward className="h-4 w-4" /> Hoppa
-              </button>
-            ) : (
-              <div className="w-10" />
-            )}
+            <div className="w-10" />
           </div>
 
           {!finished && current && (
@@ -200,10 +194,19 @@ function WorkoutPage() {
                   </span>
                 ))}
               </div>
-              <div className="mt-3 text-center">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Nu</p>
-                <p className="mt-0.5 text-2xl font-semibold tracking-tight text-primary">{current.name}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{nextPreview ? `Nästa: ${nextPreview.name}` : "Sista övningen"}</p>
+              <div className="mt-3 flex items-center gap-3">
+                <div className="min-w-0 flex-1 text-center">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Nu</p>
+                  <p className="mt-0.5 truncate text-2xl font-semibold tracking-tight text-primary">{current.name}</p>
+                  <p className="mt-1 truncate text-sm text-muted-foreground">{nextPreview ? `Nästa: ${nextPreview.name}` : "Sista övningen"}</p>
+                </div>
+                {phase === "exercise" ? (
+                  <button onClick={skipExercise} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground active:scale-[0.98]" aria-label="Hoppa över övningen">
+                    <SkipForward className="h-5 w-5" />
+                  </button>
+                ) : (
+                  <div className="h-10 w-10 shrink-0" />
+                )}
               </div>
             </section>
           )}
