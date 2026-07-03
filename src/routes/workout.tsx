@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, SkipForward, Info, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, Check, SkipForward, Info } from "lucide-react";
 import { applyIntensity, exerciseDose, exerciseSetDose, intensityLabel, pickDailyThree, pickLarge, pickSmall, type Exercise } from "@/lib/exercises";
 import { playTimerDoneCue, unlockTimerSound } from "@/lib/sound";
-import { todayISO, useAppState, addSession, updateSound } from "@/lib/storage";
+import { todayISO, useAppState, addSession } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
 
 type Mode = "dagens3" | "halvt" | "stort";
@@ -118,10 +118,6 @@ function WorkoutPage() {
     setRestSeconds(0);
   }
 
-  function toggleSound() {
-    setState((s) => updateSound(s, { enabled: !s.sound.enabled }));
-  }
-
   function completeSet() {
     if (!current || !adjusted || phase !== "exercise") return;
     const hasMoreSets = setNumberIndex + 1 < adjusted.sets;
@@ -198,7 +194,7 @@ function WorkoutPage() {
                 <div className="min-w-0 flex-1 text-center">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Nu</p>
                   <p className="mt-0.5 truncate text-2xl font-semibold tracking-tight text-primary">{current.name}</p>
-                  <p className="mt-1 truncate text-sm text-muted-foreground">{nextPreview ? `Nästa: ${nextPreview.name}` : "Sista övningen"}</p>
+                  <p className="mt-1 truncate text-sm text-muted-foreground">{phase === "rest" ? `Vilar · nästa: ${nextLabel}` : nextPreview ? `Nästa: ${nextPreview.name}` : "Sista övningen"}</p>
                 </div>
                 {phase === "exercise" ? (
                   <button onClick={skipExercise} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground active:scale-[0.98]" aria-label="Hoppa över övningen">
@@ -219,58 +215,46 @@ function WorkoutPage() {
         )}
 
         {!finished && current ? (
-          phase === "rest" ? (
-            <main className="flex flex-1 flex-col justify-center">
-              <section className="rounded-[2rem] bg-card p-7 text-center ring-1 ring-border/60">
-                <div className="flex items-center justify-center gap-3">
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Vila</p>
-                  <button onClick={toggleSound} className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-secondary-foreground active:scale-[0.98]" aria-label={state.sound.enabled ? "Stäng av ljud" : "Slå på ljud"}>
-                    {state.sound.enabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-                  </button>
-                </div>
-                <button onClick={skipRest} className="mx-auto mt-5 flex h-40 w-40 items-center justify-center rounded-full bg-secondary ring-8 ring-primary/20 active:scale-[0.98]" aria-label="Avsluta vilan och gå vidare">
-                  <div>
-                    <p className="text-6xl font-semibold leading-none tracking-tight">{restSeconds}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">sek kvar</p>
-                  </div>
-                </button>
-                <p className="mt-3 text-xs text-muted-foreground">Tryck på timern för att gå vidare direkt.</p>
-                <p className="mt-6 text-sm text-muted-foreground">Nästa</p>
-                <p className="mt-1 text-2xl font-semibold tracking-tight">{nextLabel}</p>
-              </section>
-            </main>
-          ) : (
-            <main className="flex flex-1 flex-col">
-              <section className="rounded-[2rem] bg-card p-5 ring-1 ring-border/60">
-                <div className="grid grid-cols-[1fr_112px] gap-4">
-                  <div>
-                    <p className="inline-flex rounded-2xl bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Gör nu</p>
-                    <div className="mt-4 flex items-center justify-between gap-3">
-                      <p className="text-lg font-medium text-muted-foreground">Set {currentSet} av {totalSets}</p>
+          <main className="flex flex-1 flex-col">
+            <section className="rounded-[2rem] bg-card p-5 ring-1 ring-border/60">
+              <div className="grid grid-cols-[1fr_112px] gap-4">
+                <div>
+                  <p className="inline-flex rounded-2xl bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">{phase === "rest" ? "Vila" : "Gör nu"}</p>
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <p className="text-lg font-medium text-muted-foreground">Set {currentSet} av {totalSets}</p>
+                    {phase === "rest" ? (
+                      <button onClick={skipRest} className="flex h-10 min-w-24 items-center justify-center rounded-2xl bg-secondary px-4 text-sm font-semibold text-secondary-foreground ring-2 ring-primary/20 active:scale-[0.99]" aria-label="Avsluta vilan och gå vidare">
+                        {restSeconds} sek
+                      </button>
+                    ) : (
                       <button onClick={completeSet} className="flex h-10 items-center justify-center gap-1.5 rounded-2xl bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm active:scale-[0.99]">
                         <Check className="h-4 w-4" /> Klar
                       </button>
-                    </div>
-                    <div className="mt-3 rounded-[1.25rem] bg-secondary/60 px-4 py-5">
-                      <p className="text-5xl font-semibold leading-none tracking-tight">{exerciseSetDose(current, state.intensity)}</p>
-                      <p className="mt-2 text-sm text-muted-foreground">Totalt: {exerciseDose(current, state.intensity)}</p>
-                    </div>
-                    <p className="mt-3 text-xs font-medium text-primary">Efter Klar: vila {restDuration} sek</p>
+                    )}
                   </div>
-                  <div className="flex flex-col gap-3">
-                    <Link to="/exercise/$exerciseId" params={{ exerciseId: current.id }} className="ml-auto flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-secondary-foreground active:scale-[0.98]" aria-label="Visa övningsdetaljer">
-                      <Info className="h-5 w-5" />
-                    </Link>
-                    <div className="flex flex-1 items-center justify-center overflow-hidden rounded-[1.5rem] bg-secondary/45 p-1 ring-1 ring-border/40">
-                      <ExerciseIllustration exercise={current} />
-                    </div>
+                  <div className="mt-3 rounded-[1.25rem] bg-secondary/60 px-4 py-5">
+                    <p className="text-5xl font-semibold leading-none tracking-tight">{exerciseSetDose(current, state.intensity)}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">Totalt: {exerciseDose(current, state.intensity)}</p>
+                  </div>
+                  {phase === "rest" ? (
+                    <p className="mt-3 text-xs font-medium text-primary">Vilar nu. Tryck på timern för att gå vidare. Nästa: {nextLabel}</p>
+                  ) : (
+                    <p className="mt-3 text-xs font-medium text-primary">Efter Klar: vila {restDuration} sek</p>
+                  )}
+                </div>
+                <div className="flex flex-col gap-3">
+                  <Link to="/exercise/$exerciseId" params={{ exerciseId: current.id }} className="ml-auto flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-secondary-foreground active:scale-[0.98]" aria-label="Visa övningsdetaljer">
+                    <Info className="h-5 w-5" />
+                  </Link>
+                  <div className="flex flex-1 items-center justify-center overflow-hidden rounded-[1.5rem] bg-secondary/45 p-1 ring-1 ring-border/40">
+                    <ExerciseIllustration exercise={current} />
                   </div>
                 </div>
+              </div>
 
-                <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">{current.instruction}</p>
-              </section>
-            </main>
-          )
+              <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">{current.instruction}</p>
+            </section>
+          </main>
         ) : (
           <div className="mt-10 rounded-3xl bg-card p-8 text-center ring-1 ring-border/60">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/20">
