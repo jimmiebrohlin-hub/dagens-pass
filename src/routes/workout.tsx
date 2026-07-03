@@ -16,6 +16,28 @@ type VisibleStep = {
 };
 
 const REST_SECONDS = 45;
+const EXERCISE_IMAGES: Record<string, string> = {
+  armhavningar: "/exercises/armhavningar.png",
+  bankdips: "/exercises/bankdips.png",
+  benlyft: "/exercises/benlyft.png",
+  bird_dog: "/exercises/bird_dog.png",
+  dead_bug: "/exercises/dead_bug.png",
+  hollow_hold: "/exercises/hollow_hold.png",
+  hoftlyft: "/exercises/hoftlyft.png",
+  jagarvila: "/exercises/jagarvila.png",
+  knaboj: "/exercises/knaboj.png",
+  mountain_climbers: "/exercises/mountain_climbers.png",
+  planka: "/exercises/planka.png",
+  russian_twist: "/exercises/russian_twist.png",
+  rygglyft: "/exercises/rygglyft.png",
+  sidoplanka: "/exercises/sidoplanka.png",
+  situps: "/exercises/situps.png",
+  spindelplanka: "/exercises/spindelplanka.png",
+  stepup: "/exercises/stepup.png",
+  tahavningar: "/exercises/tahavningar.png",
+  utfall: "/exercises/utfall.png",
+  vadpress: "/exercises/vadpress.png",
+};
 
 export const Route = createFileRoute("/workout")({
   validateSearch: (s: Record<string, unknown>): { mode: Mode } => ({
@@ -218,7 +240,7 @@ function WorkoutPage() {
                     <Link to="/exercise/$exerciseId" params={{ exerciseId: current.id }} className="ml-auto flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-secondary-foreground active:scale-[0.98]" aria-label="Visa övningsdetaljer">
                       <Info className="h-5 w-5" />
                     </Link>
-                    <div className="flex flex-1 items-center justify-center rounded-[1.5rem] bg-secondary/45 p-3 ring-1 ring-border/40">
+                    <div className="flex flex-1 items-center justify-center overflow-hidden rounded-[1.5rem] bg-secondary/45 p-1 ring-1 ring-border/40">
                       <ExerciseIllustration exercise={current} />
                     </div>
                   </div>
@@ -279,66 +301,14 @@ function getVisibleSteps(exercises: Exercise[], currentIndex: number, done: bool
 }
 
 function ExerciseIllustration({ exercise }: { exercise: Exercise }) {
-  const stroke = "currentColor";
+  const imageSrc = EXERCISE_IMAGES[exercise.id];
 
-  if (["armhavningar", "planka", "spindelplanka"].includes(exercise.id)) {
-    return (
-      <svg viewBox="0 0 120 120" className="h-24 w-24 text-primary/85" fill="none" stroke={stroke} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="84" cy="27" r="10" />
-        <path d="M74 35L58 50L42 60" />
-        <path d="M58 50L86 57L104 57" />
-        <path d="M42 60L24 85" />
-        <path d="M70 56L58 85" />
-        <path d="M100 57L110 82" />
-      </svg>
-    );
-  }
-
-  if (["stepup", "utfall"].includes(exercise.id)) {
-    return (
-      <svg viewBox="0 0 120 120" className="h-24 w-24 text-primary/85" fill="none" stroke={stroke} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="70" y="76" width="28" height="18" rx="3" />
-        <circle cx="52" cy="22" r="10" />
-        <path d="M52 32L52 54L72 64" />
-        <path d="M52 42L32 52" />
-        <path d="M72 64L86 76" />
-        <path d="M52 54L36 82" />
-        <path d="M36 82L20 94" />
-        <path d="M86 76L102 76" />
-      </svg>
-    );
-  }
-
-  if (["hoftlyft", "situps", "benlyft", "rygglyft"].includes(exercise.id)) {
-    return (
-      <svg viewBox="0 0 120 120" className="h-24 w-24 text-primary/85" fill="none" stroke={stroke} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="34" cy="70" r="9" />
-        <path d="M42 72L62 58L82 58" />
-        <path d="M62 58L76 76L98 76" />
-        <path d="M76 76L66 92" />
-        <path d="M98 76L108 58" />
-        <path d="M24 90H108" strokeWidth="3" />
-      </svg>
-    );
-  }
-
-  if (exercise.id === "bankdips") {
-    return (
-      <svg viewBox="0 0 120 120" className="h-24 w-24 text-primary/85" fill="none" stroke={stroke} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 84H98" />
-        <path d="M30 48V84" />
-        <path d="M90 52V84" />
-        <circle cx="56" cy="28" r="9" />
-        <path d="M56 38L56 58L38 64" />
-        <path d="M56 52L76 58" />
-        <path d="M38 64L38 84" />
-        <path d="M76 58L88 84" />
-      </svg>
-    );
+  if (imageSrc) {
+    return <img src={imageSrc} alt={exercise.name} className="h-full w-full rounded-[1.25rem] object-cover" loading="lazy" />;
   }
 
   return (
-    <svg viewBox="0 0 120 120" className="h-24 w-24 text-primary/85" fill="none" stroke={stroke} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 120 120" className="h-24 w-24 text-primary/85" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="60" cy="22" r="10" />
       <path d="M60 32L60 58" />
       <path d="M60 40L40 50" />
