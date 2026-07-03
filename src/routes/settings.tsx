@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Bell, Star, EyeOff, Settings, ChevronRight, Gauge, Volume2 } from "lucide-react";
+import { ArrowLeft, Bell, Star, EyeOff, Settings, ChevronRight, Gauge, Volume2, Clock } from "lucide-react";
 import { EXERCISES, intensityLabel } from "@/lib/exercises";
 import { playTimerDoneCue, unlockTimerSound } from "@/lib/sound";
-import { useAppState, updateReminder, toggleFavorite, toggleBlocked, updateIntensity, updateSound, type WorkoutIntensity } from "@/lib/storage";
+import { useAppState, updateReminder, toggleFavorite, toggleBlocked, updateIntensity, updateSound, updateRestSeconds, type WorkoutIntensity } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
 
 const INTENSITIES: Array<{ id: WorkoutIntensity; label: string; hint: string }> = [
@@ -10,6 +10,8 @@ const INTENSITIES: Array<{ id: WorkoutIntensity; label: string; hint: string }> 
   { id: "normal", label: "Normal", hint: "Standardnivå" },
   { id: "tuff", label: "Tuff", hint: "Ca 25% mer" },
 ];
+
+const REST_OPTIONS = [15, 30, 45, 60, 90];
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: `Inställningar — ${APP_NAME}` }] }),
@@ -43,7 +45,7 @@ function SettingsPage() {
           </div>
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">Anpassa appen</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Nivå, ljud, påminnelse och vilka övningar som ska prioriteras.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Nivå, vila, ljud, påminnelse och vilka övningar som ska prioriteras.</p>
           </div>
         </div>
 
@@ -71,7 +73,32 @@ function SettingsPage() {
               </button>
             ))}
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">Nivån påverkar Dagens 3 och Halvt pass. 100 reps styrs av egen progression.</p>
+          <p className="mt-3 text-xs text-muted-foreground">Nivån påverkar Dagens 3 och blandpassen. 100 reps styrs av egen progression.</p>
+        </section>
+
+        <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15">
+              <Clock className="h-4 w-4 text-primary-foreground/80" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Vilotid mellan set</p>
+              <p className="text-xs text-muted-foreground">Nu: {state.restSeconds} sekunder</p>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-5 gap-2">
+            {REST_OPTIONS.map((seconds) => (
+              <button
+                key={seconds}
+                onClick={() => setState((s) => updateRestSeconds(s, seconds))}
+                className={`rounded-2xl px-2 py-3 text-center active:scale-[0.98] ${state.restSeconds === seconds ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
+              >
+                <p className="text-sm font-medium">{seconds}</p>
+                <p className={`mt-0.5 text-[10px] ${state.restSeconds === seconds ? "text-primary-foreground/80" : "text-muted-foreground"}`}>sek</p>
+              </button>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">Används automatiskt efter Klar i guidade pass.</p>
         </section>
 
         <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
