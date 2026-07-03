@@ -14,7 +14,153 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      challenge_progress: {
+        Row: {
+          base_reps: number
+          exercise_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          base_reps?: number
+          exercise_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          base_reps?: number
+          exercise_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      exercise_preferences: {
+        Row: {
+          blocked_ids: string[]
+          created_at: string
+          favorite_ids: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          blocked_ids?: string[]
+          created_at?: string
+          favorite_ids?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          blocked_ids?: string[]
+          created_at?: string
+          favorite_ids?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id: string
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          created_at: string
+          intensity: string
+          reminder_enabled: boolean
+          reminder_time: string
+          rest_seconds: number
+          sound_enabled: boolean
+          updated_at: string
+          user_id: string
+          vibration_enabled: boolean
+        }
+        Insert: {
+          created_at?: string
+          intensity?: string
+          reminder_enabled?: boolean
+          reminder_time?: string
+          rest_seconds?: number
+          sound_enabled?: boolean
+          updated_at?: string
+          user_id: string
+          vibration_enabled?: boolean
+        }
+        Update: {
+          created_at?: string
+          intensity?: string
+          reminder_enabled?: boolean
+          reminder_time?: string
+          rest_seconds?: number
+          sound_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+          vibration_enabled?: boolean
+        }
+        Relationships: []
+      }
+      workout_sessions: {
+        Row: {
+          completed_at: string
+          created_at: string
+          exercises: Json
+          feedback: string | null
+          id: string
+          local_id: string | null
+          mode: string
+          total_reps: number | null
+          user_id: string
+          workout_date: string
+        }
+        Insert: {
+          completed_at: string
+          created_at?: string
+          exercises?: Json
+          feedback?: string | null
+          id?: string
+          local_id?: string | null
+          mode: string
+          total_reps?: number | null
+          user_id: string
+          workout_date: string
+        }
+        Update: {
+          completed_at?: string
+          created_at?: string
+          exercises?: Json
+          feedback?: string | null
+          id?: string
+          local_id?: string | null
+          mode?: string
+          total_reps?: number | null
+          user_id?: string
+          workout_date?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
