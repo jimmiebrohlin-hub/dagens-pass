@@ -22,10 +22,11 @@ function SettingsPage() {
   const [state, setState] = useAppState();
   const favorites = state.preferences.favoriteIds.length;
   const blocked = state.preferences.blockedIds.length;
+  const supportsVibration = typeof navigator !== "undefined" && "vibrate" in navigator;
 
   async function testSound() {
     await unlockTimerSound();
-    await playTimerDoneCue({ enabled: true, vibration: state.sound.vibration });
+    await playTimerDoneCue(state.sound);
   }
 
   return (
@@ -73,7 +74,7 @@ function SettingsPage() {
               </button>
             ))}
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">Nivån påverkar Dagens 3 och blandpassen. 100 reps styrs av egen progression.</p>
+          <p className="mt-3 text-xs text-muted-foreground">Nivån påverkar Dagens 3 och blandpassen. 100 challenge styrs av egen progression.</p>
         </section>
 
         <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
@@ -111,7 +112,7 @@ function SettingsPage() {
                 <div>
                   <p className="text-sm font-medium">Ljud och vibration</p>
                   <p className="text-xs text-muted-foreground">
-                    Timer klar: ljud {state.sound.enabled ? "på" : "av"}, vibration {state.sound.vibration ? "på" : "av"}
+                    Timer klar: ljud {state.sound.enabled ? "på" : "av"}, vibration {supportsVibration && state.sound.vibration ? "på" : "ej tillgänglig"}
                   </p>
                 </div>
                 <button onClick={testSound} className="rounded-full bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground active:scale-[0.98]">
@@ -127,14 +128,15 @@ function SettingsPage() {
                   <p className={`mt-0.5 text-[11px] ${state.sound.enabled ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{state.sound.enabled ? "På" : "Av"}</p>
                 </button>
                 <button
-                  onClick={() => setState((s) => updateSound(s, { vibration: !s.sound.vibration }))}
-                  className={`rounded-2xl p-3 text-left active:scale-[0.98] ${state.sound.vibration ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
+                  onClick={() => supportsVibration && setState((s) => updateSound(s, { vibration: !s.sound.vibration }))}
+                  disabled={!supportsVibration}
+                  className={`rounded-2xl p-3 text-left active:scale-[0.98] ${supportsVibration && state.sound.vibration ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"} ${!supportsVibration ? "opacity-60" : ""}`}
                 >
                   <p className="text-sm font-medium">Vibration</p>
-                  <p className={`mt-0.5 text-[11px] ${state.sound.vibration ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{state.sound.vibration ? "På" : "Av"}</p>
+                  <p className={`mt-0.5 text-[11px] ${supportsVibration && state.sound.vibration ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{supportsVibration ? (state.sound.vibration ? "På" : "Av") : "Stöds ej"}</p>
                 </button>
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">Test-knappen spelar alltid upp ett ljud. Ljudvalet ovan styr bara signalen efter vila.</p>
+              <p className="mt-3 text-xs text-muted-foreground">Testa följer ljudinställningen: om ljud är av spelas inget ljud. Vibration fungerar bara i webbläsare som stödjer vibrations-API:t.</p>
             </div>
           </div>
         </section>
