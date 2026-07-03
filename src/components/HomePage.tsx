@@ -81,8 +81,8 @@ export function HomePage() {
           </Link>
           <Link to="/hundred" className="group rounded-2xl bg-card p-4 ring-1 ring-border/60 transition active:scale-[0.99]">
             <Hash className="h-5 w-5 text-primary" />
-            <p className="mt-3 text-sm font-medium">100 reps</p>
-            <p className="text-xs text-muted-foreground">Vägen till 102</p>
+            <p className="mt-3 text-sm font-medium">100 challenge</p>
+            <p className="text-xs text-muted-foreground">Igång + toppset + back-off</p>
           </Link>
         </div>
 
