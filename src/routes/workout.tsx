@@ -60,6 +60,7 @@ function WorkoutPage() {
   const [restSeconds, setRestSeconds] = useState(0);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
+  const restDuration = state.restSeconds ?? REST_SECONDS;
   const current = exercises[exerciseIndex];
   const adjusted = current ? applyIntensity(current, state.intensity) : undefined;
   const totalSets = adjusted?.sets ?? 1;
@@ -110,7 +111,7 @@ function WorkoutPage() {
     setPendingAction(action);
     setPhase("rest");
     void unlockTimerSound();
-    setRestSeconds(REST_SECONDS);
+    setRestSeconds(restDuration);
   }
 
   function skipRest() {
@@ -175,7 +176,13 @@ function WorkoutPage() {
               <p className="text-lg font-semibold tracking-tight">{APP_NAME}</p>
               <p className="text-xs text-muted-foreground">{title} · {intensityLabel(state.intensity)}</p>
             </div>
-            <p className="w-10 text-right text-sm font-medium text-primary">{finished ? "Klart" : `${exerciseIndex + 1}/${exercises.length}`}</p>
+            {!finished && phase === "exercise" ? (
+              <button onClick={skipExercise} className="flex h-10 items-center justify-center gap-1 rounded-full bg-secondary px-3 text-xs font-medium text-secondary-foreground active:scale-[0.98]">
+                <SkipForward className="h-4 w-4" /> Hoppa
+              </button>
+            ) : (
+              <div className="w-10" />
+            )}
           </div>
 
           {!finished && current && (
@@ -239,12 +246,17 @@ function WorkoutPage() {
                 <div className="grid grid-cols-[1fr_112px] gap-4">
                   <div>
                     <p className="inline-flex rounded-2xl bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Gör nu</p>
-                    <p className="mt-4 text-lg font-medium text-muted-foreground">Set {currentSet} av {totalSets}</p>
+                    <div className="mt-4 flex items-center justify-between gap-3">
+                      <p className="text-lg font-medium text-muted-foreground">Set {currentSet} av {totalSets}</p>
+                      <button onClick={completeSet} className="flex h-10 items-center justify-center gap-1.5 rounded-2xl bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm active:scale-[0.99]">
+                        <Check className="h-4 w-4" /> Klar
+                      </button>
+                    </div>
                     <div className="mt-3 rounded-[1.25rem] bg-secondary/60 px-4 py-5">
                       <p className="text-5xl font-semibold leading-none tracking-tight">{exerciseSetDose(current, state.intensity)}</p>
                       <p className="mt-2 text-sm text-muted-foreground">Totalt: {exerciseDose(current, state.intensity)}</p>
                     </div>
-                    <p className="mt-3 text-xs font-medium text-primary">Efter Klar: vila {REST_SECONDS} sek</p>
+                    <p className="mt-3 text-xs font-medium text-primary">Efter Klar: vila {restDuration} sek</p>
                   </div>
                   <div className="flex flex-col gap-3">
                     <Link to="/exercise/$exerciseId" params={{ exerciseId: current.id }} className="ml-auto flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-secondary-foreground active:scale-[0.98]" aria-label="Visa övningsdetaljer">
@@ -254,15 +266,6 @@ function WorkoutPage() {
                       <ExerciseIllustration exercise={current} />
                     </div>
                   </div>
-                </div>
-
-                <div className="mt-5 grid grid-cols-[1fr_auto] gap-3">
-                  <button onClick={completeSet} className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-primary text-lg font-medium text-primary-foreground shadow-sm active:scale-[0.99]">
-                    <Check className="h-5 w-5" /> Klar
-                  </button>
-                  <button onClick={skipExercise} className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-secondary px-5 text-base font-medium text-secondary-foreground active:scale-[0.99]">
-                    <SkipForward className="h-5 w-5" /> Hoppa
-                  </button>
                 </div>
 
                 <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">{current.instruction}</p>
