@@ -61,7 +61,7 @@ function WorkoutPage() {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
   const restDuration = state.restSeconds ?? REST_SECONDS;
-  const restProgressPct = restDuration > 0 ? Math.max(0, Math.min(100, (restSeconds / restDuration) * 100)) : 0;
+  const restProgressPct = restDuration > 0 ? Math.max(0, Math.min(100, ((restDuration - restSeconds) / restDuration) * 100)) : 0;
   const current = exercises[exerciseIndex];
   const adjusted = current ? applyIntensity(current, state.intensity) : undefined;
   const totalSets = adjusted?.sets ?? 1;
