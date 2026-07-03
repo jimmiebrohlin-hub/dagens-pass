@@ -38,6 +38,7 @@ export interface AppState {
   completedDates: string[];
   sessions: WorkoutSession[];
   hundred: Record<string, { reps: number }>;
+  activeHundredId?: string;
   reminder: ReminderSettings;
   preferences: ExercisePreferences;
   intensity: WorkoutIntensity;
@@ -57,6 +58,7 @@ const DEFAULT: AppState = {
   completedDates: [],
   sessions: [],
   hundred: {},
+  activeHundredId: undefined,
   reminder: DEFAULT_REMINDER,
   preferences: DEFAULT_PREFERENCES,
   intensity: DEFAULT_INTENSITY,
@@ -82,11 +84,16 @@ function normalizeRestSeconds(value: unknown): number {
   return [15, 30, 45, 60, 90].includes(value) ? value : DEFAULT_REST_SECONDS;
 }
 
+function normalizeActiveHundredId(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
 export function defaultState(): AppState {
   return {
     completedDates: [],
     sessions: [],
     hundred: {},
+    activeHundredId: undefined,
     reminder: { ...DEFAULT_REMINDER },
     preferences: { ...DEFAULT_PREFERENCES, favoriteIds: [], blockedIds: [] },
     intensity: DEFAULT_INTENSITY,
@@ -108,6 +115,7 @@ export function loadState(): AppState {
       completedDates: Array.isArray(parsed.completedDates) ? parsed.completedDates : [],
       sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
       hundred: parsed.hundred ?? {},
+      activeHundredId: normalizeActiveHundredId(parsed.activeHundredId),
       reminder: { ...DEFAULT_REMINDER, ...(parsed.reminder ?? {}) },
       preferences: {
         favoriteIds: Array.isArray(prefs.favoriteIds) ? unique(prefs.favoriteIds) : [],
@@ -155,6 +163,7 @@ export function createSampleState(): AppState {
     intensity: DEFAULT_INTENSITY,
     sound: { ...DEFAULT_SOUND },
     restSeconds: DEFAULT_REST_SECONDS,
+    activeHundredId: "knaboj",
     hundred: {
       knaboj: { reps: 14 },
       armhavningar: { reps: 9 },
@@ -273,6 +282,13 @@ export function updateRestSeconds(s: AppState, restSeconds: number): AppState {
   };
 }
 
+export function updateActiveHundredId(s: AppState, exerciseId: string): AppState {
+  return {
+    ...s,
+    activeHundredId: exerciseId,
+  };
+}
+
 export function toggleFavorite(s: AppState, exerciseId: string): AppState {
   const favoriteIds = s.preferences.favoriteIds.includes(exerciseId)
     ? s.preferences.favoriteIds.filter((id) => id !== exerciseId)
@@ -304,7 +320,7 @@ export function clearExercisePreference(s: AppState, exerciseId: string): AppSta
     ...s,
     preferences: {
       favoriteIds: s.preferences.favoriteIds.filter((id) => id !== exerciseId),
-      blockedIds: s.preferences.blockedIds.filter((id) => id !== exerciseId),
+      blockedIds: s.preferences.blockedIds.filter((id) => exerciseId),
     },
   };
 }
