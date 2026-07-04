@@ -20,6 +20,34 @@ export interface SharedStreak {
   members: SharedStreakMember[];
 }
 
+interface RemoteErrorLike {
+  message?: string;
+  code?: string;
+  details?: string;
+  hint?: string;
+}
+
+function formatRemoteError(error: unknown) {
+  const remoteError = error as RemoteErrorLike;
+  const message = remoteError?.message ?? String(error);
+  const parts = [
+    message,
+    remoteError?.code ? `code: ${remoteError.code}` : null,
+    remoteError?.details ? `details: ${remoteError.details}` : null,
+    remoteError?.hint ? `hint: ${remoteError.hint}` : null,
+  ].filter(Boolean);
+
+  return parts.join(" | ");
+}
+
+function rpcError(prefix: string, error: unknown) {
+  const details = formatRemoteError(error);
+  if (details.includes("get_my_shared_streak") || details.includes("PGRST202")) {
+    return new Error(`${prefix}: ${details}. Trolig orsak: senaste migrationen get_my_shared_streak är inte körd i Supabase ännu.`);
+  }
+  return new Error(`${prefix}: ${details}`);
+}
+
 function normalizeSharedStreak(value: unknown): SharedStreak | null {
   if (!value || typeof value !== "object") return null;
   const streak = value as SharedStreak;
@@ -35,9 +63,18 @@ export async function loadMySharedStreak(): Promise<SharedStreak | null> {
   if (!user) throw new Error("Du behöver vara inloggad först.");
 
   const { data, error } = await supabase.rpc("get_my_shared_streak");
-  if (error) throw new Error(`Kunde inte ladda streak via RPC: ${error.message}`);
+  if (error) {
+    console.error("[shared-streak] get_my_shared_streak failed", error);
+    throw rpcError("Kunde inte ladda streak via RPC", error);
+  }
 
-  return normalizeSharedStreak(data);
+  const streak = normalizeSharedStreak(data);
+  console.info("[shared-streak] get_my_shared_streak result", {
+    hasStreak: Boolean(streak),
+    streakId: streak?.id,
+    memberCount: streak?.members.length ?? 0,
+  });
+  return streak;
 }
 
 export async function createSharedStreak(name = "Vår streak"): Promise<SharedStreak> {
@@ -46,10 +83,13 @@ export async function createSharedStreak(name = "Vår streak"): Promise<SharedSt
   if (!user) throw new Error("Du behöver vara inloggad först.");
 
   const { error } = await supabase.rpc("create_shared_streak", { p_name: name });
-  if (error) throw new Error(`Kunde inte skapa streak via RPC: ${error.message}`);
+  if (error) {
+    console.error("[shared-streak] create_shared_streak failed", error);
+    throw rpcError("Kunde inte skapa streak via RPC", error);
+  }
 
   const loaded = await loadMySharedStreak();
-  if (!loaded) throw new Error("Streak skapades men kunde inte laddas.");
+  if (!loaded) throw new Error("Streak skapades men kunde inte laddas. Tekniskt: get_my_shared_streak returnerade null efter create_shared_streak.");
   return loaded;
 }
 
@@ -63,12 +103,13 @@ export async function joinSharedStreak(inviteCode: string): Promise<SharedStreak
 
   const { error } = await supabase.rpc("join_shared_streak_by_code", { p_invite_code: code });
   if (error) {
+    console.error("[shared-streak] join_shared_streak_by_code failed", error);
     if (error.message.includes("invite_not_found")) throw new Error("Koden hittades inte.");
-    throw new Error(`Kunde inte gå med via RPC: ${error.message}`);
+    throw rpcError("Kunde inte gå med via RPC", error);
   }
 
   const loaded = await loadMySharedStreak();
-  if (!loaded) throw new Error("Du gick med, men streaken kunde inte laddas.");
+  if (!loaded) throw new Error("Du gick med, men streaken kunde inte laddas. Tekniskt: get_my_shared_streak returnerade null efter join_shared_streak_by_code.");
   return loaded;
 }
 
