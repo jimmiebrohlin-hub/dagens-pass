@@ -297,6 +297,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_shared_streak: { Args: { p_name?: string }; Returns: string }
       is_active_streak_member: {
         Args: { _streak_id: string; _user_id: string }
         Returns: boolean
