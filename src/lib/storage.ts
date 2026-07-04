@@ -320,7 +320,7 @@ export function clearExercisePreference(s: AppState, exerciseId: string): AppSta
     ...s,
     preferences: {
       favoriteIds: s.preferences.favoriteIds.filter((id) => id !== exerciseId),
-      blockedIds: s.preferences.blockedIds.filter((id) => exerciseId),
+      blockedIds: s.preferences.blockedIds.filter((id) => id !== exerciseId),
     },
   };
 }
