@@ -302,6 +302,10 @@ export type Database = {
         Args: { _streak_id: string; _user_id: string }
         Returns: boolean
       }
+      join_shared_streak_by_code: {
+        Args: { p_invite_code: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
