@@ -1,14 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Flame, Hand, LogIn, Plus, UserPlus, Users } from "lucide-react";
+import { ArrowLeft, Flame, Hand, LogIn, Plus, RefreshCw, UserPlus, Users } from "lucide-react";
 import { signInWithGoogle, useAuthState } from "@/lib/auth";
 import { createSharedStreak, currentTurnLabel, joinSharedStreak, loadMySharedStreak, type SharedStreak } from "@/lib/sharedStreaks";
-import { APP_NAME } from "@/lib/version";
+import { APP_NAME, APP_VERSION } from "@/lib/version";
 
 export const Route = createFileRoute("/streak")({
   head: () => ({ meta: [{ title: `Streak tillsammans — ${APP_NAME}` }] }),
   component: StreakPage,
 });
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 function StreakPage() {
   const auth = useAuthState();
@@ -17,6 +21,7 @@ function StreakPage() {
   const [busy, setBusy] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [reloadNonce, setReloadNonce] = useState(0);
 
   useEffect(() => {
     if (!auth.configured || !auth.user) return;
@@ -28,7 +33,8 @@ function StreakPage() {
         const result = await loadMySharedStreak();
         if (mounted) setStreak(result);
       } catch (error) {
-        if (mounted) setMessage(error instanceof Error ? error.message : "Kunde inte ladda streak.");
+        console.error("[streak-page] loadMySharedStreak failed", error);
+        if (mounted) setMessage(`Kunde inte ladda streak.\nTekniskt fel: ${errorMessage(error, "Okänt fel vid laddning.")}`);
       } finally {
         if (mounted) setLoadingStreak(false);
       }
@@ -37,7 +43,7 @@ function StreakPage() {
     return () => {
       mounted = false;
     };
-  }, [auth.configured, auth.user]);
+  }, [auth.configured, auth.user, reloadNonce]);
 
   async function login() {
     await signInWithGoogle();
@@ -51,7 +57,8 @@ function StreakPage() {
       setStreak(result);
       setMessage("Streak skapad. Dela koden med din träningskompis.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Kunde inte skapa streak.");
+      console.error("[streak-page] createSharedStreak failed", error);
+      setMessage(`Kunde inte skapa streak.\nTekniskt fel: ${errorMessage(error, "Okänt fel vid skapande.")}`);
     } finally {
       setBusy(false);
     }
@@ -66,7 +73,8 @@ function StreakPage() {
       setJoinCode("");
       setMessage("Du gick med i streaken.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Kunde inte gå med i streak.");
+      console.error("[streak-page] joinSharedStreak failed", error);
+      setMessage(`Kunde inte gå med i streak.\nTekniskt fel: ${errorMessage(error, "Okänt fel vid gå-med.")}`);
     } finally {
       setBusy(false);
     }
@@ -83,8 +91,19 @@ function StreakPage() {
           <Link to="/" className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary">
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Streak tillsammans</p>
-          <div className="w-9" />
+          <div className="text-center">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Streak tillsammans</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">{APP_VERSION}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setReloadNonce((value) => value + 1)}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary disabled:opacity-60"
+            disabled={loadingStreak || busy || !auth.user}
+            aria-label="Ladda om streak"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
         </header>
 
         <section className="rounded-3xl bg-card p-6 ring-1 ring-border/60">
@@ -198,7 +217,21 @@ function StreakPage() {
           </section>
         )}
 
-        {message && <p className="mt-4 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">{message}</p>}
+        {message && (
+          <section className="mt-4 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">
+            <p className="whitespace-pre-line break-words">{message}</p>
+            {auth.user && (
+              <button
+                type="button"
+                disabled={loadingStreak || busy}
+                onClick={() => setReloadNonce((value) => value + 1)}
+                className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-card text-sm font-medium text-foreground disabled:opacity-60"
+              >
+                <RefreshCw className="h-4 w-4" /> Försök ladda igen
+              </button>
+            )}
+          </section>
+        )}
 
         <Link to="/workout" search={{ mode: "dagens3" }} className="mt-5 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99]">
           Gör Dagens 3
