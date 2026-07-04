@@ -20,17 +20,6 @@ export interface SharedStreak {
   members: SharedStreakMember[];
 }
 
-function makeInviteCode() {
-  return Math.random().toString(36).slice(2, 8).toUpperCase();
-}
-
-function displayNameFromUser(user: Awaited<ReturnType<typeof getCurrentUser>>) {
-  if (!user) return null;
-  const metaName = user.user_metadata?.full_name ?? user.user_metadata?.name;
-  if (typeof metaName === "string" && metaName.trim()) return metaName.trim();
-  return user.email ?? null;
-}
-
 export async function loadMySharedStreak(): Promise<SharedStreak | null> {
   if (!supabase) throw new Error("Supabase är inte konfigurerat.");
   const user = await getCurrentUser();
@@ -75,38 +64,8 @@ export async function createSharedStreak(name = "Vår streak"): Promise<SharedSt
   const user = await getCurrentUser();
   if (!user) throw new Error("Du behöver vara inloggad först.");
 
-  const id = crypto.randomUUID();
-  const inviteCode = makeInviteCode();
-  const displayName = displayNameFromUser(user);
-
-  const { error: streakError } = await supabase.from("shared_streaks").insert({
-    id,
-    name,
-    current_turn_user_id: user.id,
-    streak_count: 0,
-    invite_code: inviteCode,
-    created_by: user.id,
-  });
-  if (streakError) throw streakError;
-
-  const { error: memberError } = await supabase.from("shared_streak_members").insert({
-    streak_id: id,
-    user_id: user.id,
-    display_name: displayName,
-    member_order: 0,
-    role: "owner",
-    status: "active",
-  });
-  if (memberError) throw memberError;
-
-  const { error: activityError } = await supabase.from("shared_streak_activity").insert({
-    streak_id: id,
-    user_id: user.id,
-    activity_type: "created",
-    to_user_id: user.id,
-    streak_count_after: 0,
-  });
-  if (activityError) throw activityError;
+  const { error } = await supabase.rpc("create_shared_streak", { p_name: name });
+  if (error) throw error;
 
   const loaded = await loadMySharedStreak();
   if (!loaded) throw new Error("Streak skapades men kunde inte laddas.");
