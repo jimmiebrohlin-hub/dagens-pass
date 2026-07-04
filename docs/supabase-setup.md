@@ -24,15 +24,17 @@ Kör SQL-filerna i ordning:
 ```text
 supabase/migrations/20260703190000_initial_personal_data.sql
 supabase/migrations/20260703200000_shared_streaks.sql
+supabase/migrations/20260703203000_join_shared_streak.sql
 ```
 
-De skapar tabeller för:
+De skapar tabeller och funktioner för:
 
 - profiler och användarinställningar
 - övningspreferenser
 - 100 challenge-progress
 - passhistorik
 - shared streaks, medlemmar och aktivitet
+- join via inbjudningskod
 
 ## 4. Aktivera Google-login
 
@@ -61,9 +63,10 @@ Lägg även till aktuell Lovable preview-URL om den skiljer sig.
 5. Öppna `/streak`.
 6. Skapa streak.
 7. Kontrollera att streak-siffra, bollen och inbjudningskod visas.
+8. Logga in med ett annat konto.
+9. Gå med via inbjudningskod och kontrollera att båda medlemmarna visas.
 
 ## 6. Kända begränsningar just nu
 
-- Streak kan skapas, men annan användare kan ännu inte gå med via kod.
 - Dagens 3 flyttar ännu inte bollen automatiskt.
 - Molnsynk är fortfarande manuell från Konto-sidan.
