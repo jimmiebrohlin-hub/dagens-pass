@@ -21,6 +21,7 @@ function AccountPage() {
 
   async function logout() {
     await signOut();
+    setSyncStatus("Du är utloggad. Logga in igen för att välja Google-konto.");
   }
 
   async function upload() {
@@ -91,11 +92,16 @@ function AccountPage() {
               <button onClick={logout} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-base font-medium text-secondary-foreground active:scale-[0.99]">
                 <LogOut className="h-4 w-4" /> Logga ut
               </button>
+              <p className="mt-3 text-xs text-muted-foreground">
+                För att byta konto: logga ut och tryck sedan Logga in med Google. Google ska fråga vilket konto du vill använda.
+              </p>
             </>
           ) : (
             <>
               <p className="text-sm font-medium">Logga in</p>
-              <p className="mt-1 text-sm text-muted-foreground">Google-login är förberett. När Supabase är konfigurerat skickas du vidare till Google.</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Google-login öppnas med kontoval så att du kan välja eller byta konto.
+              </p>
               <button onClick={login} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99]">
                 <LogIn className="h-4 w-4" /> Logga in med Google
               </button>
@@ -107,7 +113,7 @@ function AccountPage() {
           <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
             <p className="text-sm font-medium">Molnsynk</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Första versionen är manuell så att vi kan testa säkert innan automatisk synk slås på.
+              Automatisk synk är på. Appen synkar vid inloggning och efter lokala ändringar. Knapparna finns kvar som manuell backup.
             </p>
             <div className="mt-4 grid gap-3">
               <button disabled={syncing} onClick={upload} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99] disabled:opacity-60">
@@ -124,7 +130,7 @@ function AccountPage() {
         <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
           <p className="text-sm font-medium">Status</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Data sparas fortfarande lokalt direkt. Molnsynk kan nu testas manuellt från den här sidan.
+            Lokal data sparas direkt och synkas automatiskt när du är inloggad. Streak ligger alltid direkt i molnet.
           </p>
         </section>
       </div>
