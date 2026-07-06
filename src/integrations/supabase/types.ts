@@ -298,6 +298,7 @@ export type Database = {
     }
     Functions: {
       create_shared_streak: { Args: { p_name?: string }; Returns: string }
+      get_my_shared_streak: { Args: never; Returns: Json }
       is_active_streak_member: {
         Args: { _streak_id: string; _user_id: string }
         Returns: boolean

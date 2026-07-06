@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Flame, Hand, LogIn, Plus, RefreshCw, UserPlus, Users } from "lucide-react";
+import { ArrowLeft, Copy, Flame, Hand, Link2, LogIn, Plus, RefreshCw, Share2, UserPlus, Users } from "lucide-react";
 import { signInWithGoogle, useAuthState } from "@/lib/auth";
 import { createSharedStreak, currentTurnLabel, joinSharedStreak, loadMySharedStreak, type SharedStreak } from "@/lib/sharedStreaks";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
@@ -22,6 +22,7 @@ function StreakPage() {
   const [joinCode, setJoinCode] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
+  const [copyNote, setCopyNote] = useState<string | null>(null);
 
   useEffect(() => {
     if (!auth.configured || !auth.user) return;
@@ -83,6 +84,34 @@ function StreakPage() {
   const turnLabel = streak && auth.user ? currentTurnLabel(streak, auth.user.id) : "Bollen visas när streaken är skapad.";
   const activeMembers = streak?.members.filter((member) => member.status === "active") ?? [];
   const memberCount = activeMembers.length;
+
+  const shareUrl = streak && typeof window !== "undefined" ? `${window.location.origin}/join/${streak.invite_code}` : "";
+  const shareText = streak
+    ? `Du är inbjuden till en gemensam streak i Vardagsstyrka.\nÖppna: ${shareUrl}\nKod: ${streak.invite_code}`
+    : "";
+
+  async function copyText(text: string, note: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyNote(note);
+      setTimeout(() => setCopyNote(null), 2000);
+    } catch {
+      setCopyNote("Kunde inte kopiera.");
+    }
+  }
+
+  async function shareInvite() {
+    if (!streak) return;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ title: "Vardagsstyrka streak", text: shareText, url: shareUrl });
+        return;
+      } catch {
+        // fall through to copy
+      }
+    }
+    await copyText(shareText, "Inbjudan kopierad");
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -212,6 +241,32 @@ function StreakPage() {
                 </ul>
                 <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Inbjudningskod</p>
                 <p className="mt-1 rounded-2xl bg-secondary px-4 py-3 text-center text-2xl font-semibold tracking-[0.2em] text-secondary-foreground">{streak.invite_code}</p>
+                <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Delningslänk</p>
+                <p className="mt-1 break-all rounded-2xl bg-secondary px-4 py-3 text-center text-xs text-secondary-foreground">{shareUrl}</p>
+                <div className="mt-3 grid gap-2">
+                  <button
+                    type="button"
+                    onClick={shareInvite}
+                    className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-medium text-primary-foreground active:scale-[0.99]"
+                  >
+                    <Share2 className="h-4 w-4" /> Dela via SMS / app
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => copyText(`${shareUrl}\nKod: ${streak.invite_code}`, "Länk + kod kopierat")}
+                    className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99]"
+                  >
+                    <Link2 className="h-4 w-4" /> Kopiera länk + kod
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => copyText(streak.invite_code, "Kod kopierad")}
+                    className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99]"
+                  >
+                    <Copy className="h-4 w-4" /> Kopiera bara kod
+                  </button>
+                  {copyNote && <p className="text-center text-xs text-muted-foreground">{copyNote}</p>}
+                </div>
               </div>
             </div>
           </section>

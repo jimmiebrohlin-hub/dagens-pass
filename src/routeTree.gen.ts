@@ -16,6 +16,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as HundredRouteImport } from './routes/hundred'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as JoinInviteCodeRouteImport } from './routes/join.$inviteCode'
 import { Route as ExerciseExerciseIdRouteImport } from './routes/exercise.$exerciseId'
 
 const WorkoutRoute = WorkoutRouteImport.update({
@@ -53,6 +54,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JoinInviteCodeRoute = JoinInviteCodeRouteImport.update({
+  id: '/join/$inviteCode',
+  path: '/join/$inviteCode',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExerciseExerciseIdRoute = ExerciseExerciseIdRouteImport.update({
   id: '/exercise/$exerciseId',
   path: '/exercise/$exerciseId',
@@ -68,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/streak': typeof StreakRoute
   '/workout': typeof WorkoutRoute
   '/exercise/$exerciseId': typeof ExerciseExerciseIdRoute
+  '/join/$inviteCode': typeof JoinInviteCodeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByTo {
   '/streak': typeof StreakRoute
   '/workout': typeof WorkoutRoute
   '/exercise/$exerciseId': typeof ExerciseExerciseIdRoute
+  '/join/$inviteCode': typeof JoinInviteCodeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -89,6 +97,7 @@ export interface FileRoutesById {
   '/streak': typeof StreakRoute
   '/workout': typeof WorkoutRoute
   '/exercise/$exerciseId': typeof ExerciseExerciseIdRoute
+  '/join/$inviteCode': typeof JoinInviteCodeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
     | '/streak'
     | '/workout'
     | '/exercise/$exerciseId'
+    | '/join/$inviteCode'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/streak'
     | '/workout'
     | '/exercise/$exerciseId'
+    | '/join/$inviteCode'
   id:
     | '__root__'
     | '/'
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | '/streak'
     | '/workout'
     | '/exercise/$exerciseId'
+    | '/join/$inviteCode'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -132,6 +144,7 @@ export interface RootRouteChildren {
   StreakRoute: typeof StreakRoute
   WorkoutRoute: typeof WorkoutRoute
   ExerciseExerciseIdRoute: typeof ExerciseExerciseIdRoute
+  JoinInviteCodeRoute: typeof JoinInviteCodeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -185,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/join/$inviteCode': {
+      id: '/join/$inviteCode'
+      path: '/join/$inviteCode'
+      fullPath: '/join/$inviteCode'
+      preLoaderRoute: typeof JoinInviteCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/exercise/$exerciseId': {
       id: '/exercise/$exerciseId'
       path: '/exercise/$exerciseId'
@@ -204,6 +224,7 @@ const rootRouteChildren: RootRouteChildren = {
   StreakRoute: StreakRoute,
   WorkoutRoute: WorkoutRoute,
   ExerciseExerciseIdRoute: ExerciseExerciseIdRoute,
+  JoinInviteCodeRoute: JoinInviteCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

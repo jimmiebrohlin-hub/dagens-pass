@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AutoCloudSync } from "../lib/autoCloudSync";
+import { supabase } from "../integrations/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -137,6 +138,26 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    async function checkPendingInvite() {
+      const code = sessionStorage.getItem("pending_invite_code");
+      if (!code) return;
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        sessionStorage.removeItem("pending_invite_code");
+        if (!window.location.pathname.startsWith("/join/")) {
+          window.location.replace(`/join/${code}`);
+        }
+      }
+    }
+    void checkPendingInvite();
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN") void checkPendingInvite();
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
