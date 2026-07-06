@@ -29,3 +29,7 @@ export async function getCurrentUser() {
   const { data } = await supabase.auth.getUser();
   return data.user ?? null;
 }
+
+export async function signInAnonymously() {
+  return supabase.auth.signInAnonymously();
+}
