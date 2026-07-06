@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
-import { getCurrentUser, isSupabaseConfigured, signInWithGoogle, signOut, supabase } from "./supabaseClient";
+import { getCurrentUser, isSupabaseConfigured, signInAnonymously, signInWithGoogle, signOut, supabase } from "./supabaseClient";
 
 export interface AuthState {
   configured: boolean;
@@ -49,4 +49,4 @@ export function useAuthState(): AuthState {
   };
 }
 
-export { signInWithGoogle, signOut };
+export { signInWithGoogle, signOut, signInAnonymously };
