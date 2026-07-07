@@ -9,12 +9,23 @@ export function isSupabaseConfigured() {
 
 export const supabase = sharedSupabase;
 
-export async function signInWithGoogle() {
+interface GoogleLoginOptions {
+  redirectPath?: string;
+}
+
+function buildRedirectUri(redirectPath?: string) {
+  if (typeof window === "undefined") return undefined;
+  if (!redirectPath) return window.location.origin;
+  const path = redirectPath.startsWith("/") ? redirectPath : `/${redirectPath}`;
+  return `${window.location.origin}${path}`;
+}
+
+export async function signInWithGoogle(options: GoogleLoginOptions = {}) {
   if (typeof window === "undefined") {
     return { error: new Error("Google-login kräver en webbläsare.") };
   }
   return lovable.auth.signInWithOAuth("google", {
-    redirect_uri: window.location.origin,
+    redirect_uri: buildRedirectUri(options.redirectPath),
     extraParams: {
       prompt: "select_account",
     },
