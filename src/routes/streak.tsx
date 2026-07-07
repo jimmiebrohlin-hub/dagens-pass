@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Copy, Flame, Hand, LogIn, Plus, RefreshCw, Share2, UserPlus, Users } from "lucide-react";
 import { signInWithGoogle, useAuthState } from "@/lib/auth";
 import { buildJoinUrl } from "@/lib/inviteLinks";
-import { createSharedStreak, currentTurnLabel, joinSharedStreak, loadMySharedStreak, type SharedStreak } from "@/lib/sharedStreaks";
+import { createSharedStreak, currentTurnLabel, isMyTurn, joinSharedStreak, loadMySharedStreaks, type SharedStreak } from "@/lib/sharedStreaks";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
 
 export const Route = createFileRoute("/streak")({
@@ -11,56 +11,57 @@ export const Route = createFileRoute("/streak")({
   component: StreakPage,
 });
 
-function errorMessage(error: unknown, fallback: string) {
+function msg(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
 function StreakPage() {
   const auth = useAuthState();
-  const [streak, setStreak] = useState<SharedStreak | null>(null);
-  const [loadingStreak, setLoadingStreak] = useState(false);
+  const [streaks, setStreaks] = useState<SharedStreak[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const [reloadNonce, setReloadNonce] = useState(0);
   const [copyNote, setCopyNote] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     if (!auth.configured || !auth.user) return;
-    let mounted = true;
+    let alive = true;
     async function load() {
-      setLoadingStreak(true);
+      setLoading(true);
       setMessage(null);
       try {
-        const result = await loadMySharedStreak();
-        if (mounted) setStreak(result);
+        const result = await loadMySharedStreaks();
+        if (!alive) return;
+        setStreaks(result);
+        setSelectedId((current) => (current && result.some((item) => item.id === current) ? current : result[0]?.id ?? null));
       } catch (error) {
-        console.error("[streak-page] loadMySharedStreak failed", error);
-        if (mounted) setMessage(`Kunde inte ladda streak.\nTekniskt fel: ${errorMessage(error, "Okänt fel vid laddning.")}`);
+        console.error("[streak-page] load failed", error);
+        if (alive) setMessage(`Kunde inte ladda streak.\nTekniskt fel: ${msg(error, "Okänt fel.")}`);
       } finally {
-        if (mounted) setLoadingStreak(false);
+        if (alive) setLoading(false);
       }
     }
     void load();
     return () => {
-      mounted = false;
+      alive = false;
     };
-  }, [auth.configured, auth.user, reloadNonce]);
+  }, [auth.configured, auth.user, reload]);
 
-  async function login() {
-    await signInWithGoogle();
-  }
-
-  async function create() {
+  async function create(name: string) {
     setBusy(true);
     setMessage(null);
     try {
-      const result = await createSharedStreak();
-      setStreak(result);
-      setMessage("Streak skapad. Dela inbjudan med din träningskompis.");
+      const result = await createSharedStreak(name);
+      setStreaks((items) => [result, ...items.filter((item) => item.id !== result.id)]);
+      setSelectedId(result.id);
+      setReload((value) => value + 1);
+      setMessage(name === "Personlig streak" ? "Personlig streak skapad." : "Streak skapad. Dela inbjudan med din träningskompis.");
     } catch (error) {
-      console.error("[streak-page] createSharedStreak failed", error);
-      setMessage(`Kunde inte skapa streak.\nTekniskt fel: ${errorMessage(error, "Okänt fel vid skapande.")}`);
+      console.error("[streak-page] create failed", error);
+      setMessage(`Kunde inte skapa streak.\nTekniskt fel: ${msg(error, "Okänt fel.")}`);
     } finally {
       setBusy(false);
     }
@@ -71,27 +72,28 @@ function StreakPage() {
     setMessage(null);
     try {
       const result = await joinSharedStreak(joinCode);
-      setStreak(result);
+      setStreaks((items) => [result, ...items.filter((item) => item.id !== result.id)]);
+      setSelectedId(result.id);
       setJoinCode("");
+      setReload((value) => value + 1);
       setMessage("Du gick med i streaken.");
     } catch (error) {
-      console.error("[streak-page] joinSharedStreak failed", error);
-      setMessage(`Kunde inte gå med i streak.\nTekniskt fel: ${errorMessage(error, "Okänt fel vid gå-med.")}`);
+      console.error("[streak-page] join failed", error);
+      setMessage(`Kunde inte gå med i streak.\nTekniskt fel: ${msg(error, "Okänt fel.")}`);
     } finally {
       setBusy(false);
     }
   }
 
-  const turnLabel = streak && auth.user ? currentTurnLabel(streak, auth.user.id) : "Bollen visas när streaken är skapad.";
-  const activeMembers = streak?.members.filter((member) => member.status === "active") ?? [];
-  const memberCount = activeMembers.length;
+  const selected = streaks.find((item) => item.id === selectedId) ?? streaks[0] ?? null;
+  const members = selected?.members.filter((member) => member.status === "active") ?? [];
+  const myTurnCount = auth.user ? streaks.filter((item) => isMyTurn(item, auth.user!.id)).length : 0;
+  const selectedMyTurn = Boolean(selected && auth.user && isMyTurn(selected, auth.user.id));
+  const turn = selected && auth.user ? currentTurnLabel(selected, auth.user.id) : "Bollen visas när streaken är skapad.";
+  const url = selected ? buildJoinUrl(selected.invite_code) : "";
+  const shareText = selected ? `Gå med i vår Vardagsstyrka-streak:\n${url}\n\nKod: ${selected.invite_code}` : "";
 
-  const shareUrl = streak ? buildJoinUrl(streak.invite_code) : "";
-  const shareText = streak
-    ? `Gå med i vår Vardagsstyrka-streak:\n${shareUrl}\n\nKod: ${streak.invite_code}`
-    : "";
-
-  async function copyText(text: string, note: string) {
+  async function copy(text: string, note: string) {
     try {
       await navigator.clipboard.writeText(text);
       setCopyNote(note);
@@ -101,188 +103,50 @@ function StreakPage() {
     }
   }
 
-  async function shareInvite() {
-    if (!streak) return;
-    if (typeof navigator !== "undefined" && navigator.share) {
+  async function share() {
+    if (!selected) return;
+    if (navigator.share) {
       try {
-        await navigator.share({ title: "Vardagsstyrka streak", text: shareText, url: shareUrl });
+        await navigator.share({ title: "Vardagsstyrka streak", text: shareText, url });
         return;
       } catch {
-        // fall through to copy
+        // fallback
       }
     }
-    await copyText(shareText, "Inbjudan kopierad");
+    await copy(shareText, "Inbjudan kopierad");
   }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-md px-5 pb-16 pt-8">
         <header className="mb-6 flex items-center justify-between">
-          <Link to="/" className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div className="text-center">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Streak tillsammans</p>
-            <p className="mt-1 text-[10px] text-muted-foreground">{APP_VERSION}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setReloadNonce((value) => value + 1)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary disabled:opacity-60"
-            disabled={loadingStreak || busy || !auth.user}
-            aria-label="Ladda om streak"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </button>
+          <Link to="/" className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary"><ArrowLeft className="h-4 w-4" /></Link>
+          <div className="text-center"><p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Streak tillsammans</p><p className="mt-1 text-[10px] text-muted-foreground">{APP_VERSION}</p></div>
+          <button type="button" disabled={loading || busy || !auth.user} onClick={() => setReload((value) => value + 1)} className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary disabled:opacity-60" aria-label="Ladda om"><RefreshCw className="h-4 w-4" /></button>
         </header>
 
-        <section className="rounded-3xl bg-card p-6 ring-1 ring-border/60">
-          <div className="flex items-start gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/15">
-              <Flame className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Gemensam streak</p>
-              <h1 className="mt-1 text-6xl font-semibold tracking-tight">{streak?.streak_count ?? 0}</h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Gör Dagens 3 varannan gång och håll streaken vid liv tillsammans.
-              </p>
-            </div>
-          </div>
+        <section className="rounded-3xl bg-card p-5 ring-1 ring-border/60">
+          <div className="flex items-start gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/15"><Flame className="h-6 w-6 text-primary" /></div><div className="min-w-0 flex-1"><p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Gemensam streak</p><div className="mt-1 flex items-end gap-2"><h1 className="text-5xl font-semibold leading-none tracking-tight">{selected?.streak_count ?? 0}</h1>{selected && <p className="pb-1 text-sm text-muted-foreground">i vald streak</p>}</div><p className="mt-2 text-sm text-muted-foreground">{selected ? `${streaks.length} aktiv ${streaks.length === 1 ? "streak" : "streaks"}. Ett Dagens 3 kan uppdatera alla där bollen är hos dig.` : "Skapa en personlig streak eller träna tillsammans med en kompis."}</p></div></div>
         </section>
 
         <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary">
-              <Hand className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-medium">Bollen</p>
-              <p className="mt-1 text-sm text-muted-foreground">{turnLabel}</p>
-            </div>
-          </div>
+          <div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary"><Hand className="h-5 w-5 text-primary" /></div><div><p className="text-sm font-medium">Bollen</p><p className="mt-1 text-sm text-muted-foreground">{turn}</p>{myTurnCount > 1 && <p className="mt-2 text-xs font-medium text-primary">Din tur i {myTurnCount} streaks — gör övningarna en gång.</p>}</div></div>
         </section>
 
-        {!auth.configured && (
-          <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
-            <p className="text-sm font-medium">Supabase saknas</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Streak tillsammans behöver Supabase och Google-login innan den kan användas på riktigt.
-            </p>
-          </section>
-        )}
+        {selected && <Link to="/workout" search={{ mode: "dagens3" }} className="mt-4 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99]">{selectedMyTurn || myTurnCount > 0 ? "Gör Dagens 3" : "Öppna Dagens 3"}</Link>}
 
-        {auth.configured && auth.loading && (
-          <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
-            <p className="text-sm text-muted-foreground">Laddar konto...</p>
-          </section>
-        )}
+        {auth.configured && auth.loading && <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60"><p className="text-sm text-muted-foreground">Laddar konto...</p></section>}
+        {auth.configured && !auth.loading && !auth.user && <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60"><p className="text-sm font-medium">Logga in för att skapa streak</p><p className="mt-1 text-sm text-muted-foreground">Streaken sparas per konto.</p><button onClick={() => signInWithGoogle()} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground"><LogIn className="h-4 w-4" /> Logga in med Google</button></section>}
+        {auth.configured && auth.user && loading && <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60"><p className="text-sm text-muted-foreground">Laddar streak...</p></section>}
 
-        {auth.configured && !auth.loading && !auth.user && (
-          <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
-            <p className="text-sm font-medium">Logga in för att skapa streak</p>
-            <p className="mt-1 text-sm text-muted-foreground">Streaken sparas per konto och kan delas med en annan användare.</p>
-            <button onClick={login} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99]">
-              <LogIn className="h-4 w-4" /> Logga in med Google
-            </button>
-          </section>
-        )}
+        {auth.user && !loading && streaks.length > 0 && <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60"><div className="flex items-center justify-between"><div><p className="text-sm font-medium">Dina streaks</p><p className="mt-1 text-xs text-muted-foreground">Välj vilken streak som ska visas.</p></div><span className="rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground">{streaks.length}</span></div><div className="mt-3 grid gap-2">{streaks.map((item) => { const active = item.id === selected?.id; const activeMembers = item.members.filter((member) => member.status === "active"); return <button key={item.id} type="button" onClick={() => setSelectedId(item.id)} className={`flex items-center justify-between gap-3 rounded-2xl px-3 py-2 text-left text-sm ring-1 ${active ? "bg-primary/10 ring-primary/30" : "bg-secondary/60 ring-transparent"}`}><span className="min-w-0"><span className="block truncate font-medium">{item.name}</span><span className="block text-xs text-muted-foreground">{item.streak_count} · {activeMembers.length} medlem{activeMembers.length === 1 ? "" : "mar"}</span></span>{auth.user && isMyTurn(item, auth.user.id) && <span className="shrink-0 text-xs font-medium text-primary">Din tur</span>}</button>; })}</div></section>}
 
-        {auth.configured && auth.user && !loadingStreak && !streak && (
-          <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
-            <p className="text-sm font-medium">Skapa gemensam streak</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Du får en kod att dela. Bollen hamnar hos dig direkt.
-            </p>
-            <button disabled={busy} onClick={create} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99] disabled:opacity-60">
-              <Plus className="h-4 w-4" /> Skapa streak
-            </button>
-          </section>
-        )}
+        {auth.user && !loading && <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60"><p className="text-sm font-medium">Lägg till streak</p><p className="mt-1 text-xs text-muted-foreground">Du kan ha flera streaks igång.</p><div className="mt-4 grid grid-cols-2 gap-2"><button disabled={busy} onClick={() => create("Vår streak")} className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-medium text-primary-foreground disabled:opacity-60"><Plus className="h-4 w-4" /> Ny</button><button disabled={busy} onClick={() => create("Personlig streak")} className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground disabled:opacity-60"><Plus className="h-4 w-4" /> Personlig</button></div><div className="mt-3 flex gap-2"><input value={joinCode} onChange={(event) => setJoinCode(event.target.value.toUpperCase())} placeholder="KOD" className="h-11 min-w-0 flex-1 rounded-2xl bg-secondary px-4 text-center text-sm font-semibold uppercase tracking-[0.18em] outline-none ring-1 ring-border/60" maxLength={12} /><button disabled={busy || joinCode.trim().length < 4} onClick={join} className="flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-2xl bg-secondary px-4 text-sm font-medium disabled:opacity-60"><UserPlus className="h-4 w-4" /> Gå med</button></div></section>}
 
-        {auth.configured && auth.user && !loadingStreak && !streak && (
-          <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
-            <p className="text-sm font-medium">Gå med med kod</p>
-            <p className="mt-1 text-sm text-muted-foreground">Skriv in koden du fått av din träningskompis.</p>
-            <input
-              value={joinCode}
-              onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
-              placeholder="ABC123"
-              className="mt-4 h-12 w-full rounded-2xl bg-secondary px-4 text-center text-lg font-semibold uppercase tracking-[0.18em] text-secondary-foreground outline-none ring-1 ring-border/60 focus:ring-primary/50"
-              maxLength={12}
-            />
-            <button disabled={busy || joinCode.trim().length < 4} onClick={join} className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-base font-medium text-secondary-foreground active:scale-[0.99] disabled:opacity-60">
-              <UserPlus className="h-4 w-4" /> Gå med
-            </button>
-          </section>
-        )}
+        {selected && <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60"><div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary"><Users className="h-5 w-5 text-primary" /></div><div className="min-w-0 flex-1"><p className="text-sm font-medium">{selected.name}</p><p className="mt-1 text-sm text-muted-foreground">{members.length} medlem{members.length === 1 ? "" : "mar"}</p><ul className="mt-3 space-y-1.5">{members.map((member) => <li key={member.user_id} className="flex items-center justify-between gap-3 rounded-2xl bg-secondary/60 px-3 py-2 text-sm"><span className="truncate">{member.display_name?.trim() || "Medlem"}{member.user_id === auth.user?.id ? " (du)" : ""}</span>{member.user_id === selected.current_turn_user_id && <span className="shrink-0 text-xs font-medium text-primary">Bollen</span>}</li>)}</ul><p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Inbjudningskod</p><div className="relative mt-1 rounded-2xl bg-secondary px-4 py-3 pr-12 text-center text-2xl font-semibold tracking-[0.2em]"><span>{selected.invite_code}</span><button type="button" onClick={() => copy(selected.invite_code, "Kod kopierad")} className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-card/80" aria-label="Kopiera kod"><Copy className="h-4 w-4" /></button></div><button type="button" onClick={share} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-medium text-primary-foreground"><Share2 className="h-4 w-4" /> Dela inbjudan</button>{copyNote && <p className="mt-2 text-center text-xs text-muted-foreground">{copyNote}</p>}</div></div></section>}
 
-        {auth.configured && auth.user && loadingStreak && (
-          <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
-            <p className="text-sm text-muted-foreground">Laddar streak...</p>
-          </section>
-        )}
-
-        {streak && (
-          <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary">
-                <Users className="h-5 w-5 text-primary" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">{streak.name}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{memberCount} medlem{memberCount === 1 ? "" : "mar"}</p>
-                <ul className="mt-3 space-y-1.5">
-                  {activeMembers.map((member) => (
-                    <li key={member.user_id} className="flex items-center justify-between gap-3 rounded-2xl bg-secondary/60 px-3 py-2 text-sm">
-                      <span className="truncate">{member.display_name ?? "Medlem"}</span>
-                      {member.user_id === streak.current_turn_user_id && <span className="shrink-0 text-xs font-medium text-primary">Bollen</span>}
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Inbjudningskod</p>
-                <p className="mt-1 rounded-2xl bg-secondary px-4 py-3 text-center text-2xl font-semibold tracking-[0.2em] text-secondary-foreground">{streak.invite_code}</p>
-                <div className="mt-3 grid gap-2">
-                  <button
-                    type="button"
-                    onClick={shareInvite}
-                    className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-medium text-primary-foreground active:scale-[0.99]"
-                  >
-                    <Share2 className="h-4 w-4" /> Dela inbjudan
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => copyText(streak.invite_code, "Kod kopierad")}
-                    className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99]"
-                  >
-                    <Copy className="h-4 w-4" /> Kopiera kod
-                  </button>
-                  {copyNote && <p className="text-center text-xs text-muted-foreground">{copyNote}</p>}
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {message && (
-          <section className="mt-4 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">
-            <p className="whitespace-pre-line break-words">{message}</p>
-            {auth.user && (
-              <button
-                type="button"
-                disabled={loadingStreak || busy}
-                onClick={() => setReloadNonce((value) => value + 1)}
-                className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-card text-sm font-medium text-foreground disabled:opacity-60"
-              >
-                <RefreshCw className="h-4 w-4" /> Försök ladda igen
-              </button>
-            )}
-          </section>
-        )}
-
-        <Link to="/workout" search={{ mode: "dagens3" }} className="mt-5 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99]">
-          Gör Dagens 3
-        </Link>
+        {message && <section className="mt-4 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground"><p className="whitespace-pre-line break-words">{message}</p></section>}
+        {!selected && auth.user && !loading && <Link to="/workout" search={{ mode: "dagens3" }} className="mt-5 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-base font-medium text-primary-foreground">Gör Dagens 3</Link>}
       </div>
     </div>
   );
