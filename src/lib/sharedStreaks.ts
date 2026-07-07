@@ -41,6 +41,14 @@ export interface SharedDaily3CompletionResult {
   buddy_window_hours?: number;
 }
 
+export interface SharedStreakResetResult {
+  reset: boolean;
+  deleted_streaks: number;
+  deleted_members: number;
+  deleted_activity: number;
+  personal_streak_id: string | null;
+}
+
 interface RemoteErrorLike {
   message?: string;
   code?: string;
@@ -68,7 +76,7 @@ function missingRpc(error: unknown, rpcName: string) {
 
 function rpcError(prefix: string, error: unknown) {
   const details = formatRemoteError(error);
-  if (details.includes("get_my_shared_streak") || details.includes("get_my_shared_streaks") || details.includes("ensure_my_personal_streak") || details.includes("complete_shared_daily3_turns") || details.includes("PGRST202")) {
+  if (details.includes("get_my_shared_streak") || details.includes("get_my_shared_streaks") || details.includes("ensure_my_personal_streak") || details.includes("complete_shared_daily3_turns") || details.includes("debug_reset_all_shared_streaks") || details.includes("PGRST202")) {
     return new Error(`${prefix}: ${details}. Trolig orsak: senaste Supabase-migrationen är inte körd ännu.`);
   }
   return new Error(`${prefix}: ${details}`);
@@ -205,6 +213,20 @@ export async function loadMySharedStreaks(): Promise<SharedStreak[]> {
 export async function loadMySharedStreak(): Promise<SharedStreak | null> {
   const streaks = await loadMySharedStreaks();
   return streaks[0] ?? null;
+}
+
+export async function resetAllSharedStreaksForTest(): Promise<SharedStreakResetResult> {
+  if (!supabase) throw new Error("Supabase är inte konfigurerat.");
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Du behöver vara inloggad först.");
+
+  const { data, error } = await supabase.rpc("debug_reset_all_shared_streaks");
+  if (error) {
+    console.error("[shared-streak] debug_reset_all_shared_streaks failed", error);
+    throw rpcError("Kunde inte rensa streaks via testknappen", error);
+  }
+
+  return data as SharedStreakResetResult;
 }
 
 export async function createSharedStreak(name = "Streak med någon"): Promise<SharedStreak> {
