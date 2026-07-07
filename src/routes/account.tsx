@@ -113,16 +113,22 @@ function AccountPage() {
           <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
             <p className="text-sm font-medium">Molnsynk</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Automatisk synk är på. Appen synkar vid inloggning och efter lokala ändringar. Knapparna finns kvar som manuell backup.
+              Automatisk synk är på. Appen synkar vid inloggning och efter lokala ändringar.
             </p>
-            <div className="mt-4 grid gap-3">
-              <button disabled={syncing} onClick={upload} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99] disabled:opacity-60">
-                <UploadCloud className="h-4 w-4" /> Spara lokal data i molnet
-              </button>
-              <button disabled={syncing} onClick={download} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-base font-medium text-secondary-foreground active:scale-[0.99] disabled:opacity-60">
-                <DownloadCloud className="h-4 w-4" /> Hämta molndata till appen
-              </button>
-            </div>
+            <details className="mt-4 rounded-2xl bg-secondary/60 p-3">
+              <summary className="cursor-pointer text-sm font-medium">Avancerat / manuell backup</summary>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Använd bara dessa om synken verkar fel eller om du vill göra en manuell säkerhetskopia.
+              </p>
+              <div className="mt-3 grid gap-2">
+                <button disabled={syncing} onClick={upload} className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-card text-sm font-medium text-foreground active:scale-[0.99] disabled:opacity-60">
+                  <UploadCloud className="h-4 w-4" /> Spara lokal data i molnet
+                </button>
+                <button disabled={syncing} onClick={download} className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-card text-sm font-medium text-foreground active:scale-[0.99] disabled:opacity-60">
+                  <DownloadCloud className="h-4 w-4" /> Hämta molndata till appen
+                </button>
+              </div>
+            </details>
             {syncStatus && <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">{syncStatus}</p>}
           </section>
         )}
