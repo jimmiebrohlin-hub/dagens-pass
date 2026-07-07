@@ -186,6 +186,7 @@ export type Database = {
           name: string
           status: string
           streak_count: number
+          streak_kind: string
           type: string
           updated_at: string
         }
@@ -199,6 +200,7 @@ export type Database = {
           name: string
           status?: string
           streak_count?: number
+          streak_kind?: string
           type?: string
           updated_at?: string
         }
@@ -212,6 +214,7 @@ export type Database = {
           name?: string
           status?: string
           streak_count?: number
+          streak_kind?: string
           type?: string
           updated_at?: string
         }
@@ -297,8 +300,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      complete_shared_daily3_turns: { Args: never; Returns: Json }
       create_shared_streak: { Args: { p_name?: string }; Returns: string }
+      debug_reset_all_shared_streaks: { Args: never; Returns: Json }
+      ensure_my_personal_streak: { Args: never; Returns: string }
       get_my_shared_streak: { Args: never; Returns: Json }
+      get_my_shared_streaks: { Args: never; Returns: Json }
       is_active_streak_member: {
         Args: { _streak_id: string; _user_id: string }
         Returns: boolean
