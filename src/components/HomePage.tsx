@@ -1,11 +1,17 @@
 import { Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { CheckCircle2, Flame, Target, Hash, BarChart3, Settings, User, Users } from "lucide-react";
+import { useAuthState } from "@/lib/auth";
 import { useAppState, computeStreak, weekCount, todayISO } from "@/lib/storage";
 import { exerciseDose, intensityLabel, pickDailyThree } from "@/lib/exercises";
+import { currentTurnLabel, isMyTurn, loadMySharedStreaks, type SharedStreak } from "@/lib/sharedStreaks";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
 
 export function HomePage() {
   const [state] = useAppState();
+  const auth = useAuthState();
+  const [sharedStreaks, setSharedStreaks] = useState<SharedStreak[]>([]);
+  const [loadingSharedStreaks, setLoadingSharedStreaks] = useState(false);
   const today = todayISO();
   const daily = pickDailyThree(today, state.preferences);
   const streak = computeStreak(state.completedDates);
@@ -14,6 +20,53 @@ export function HomePage() {
   const favorites = state.preferences.favoriteIds.length;
   const hidden = state.preferences.blockedIds.length;
   const dailyDoneToday = state.sessions.some((session) => session.date === today && session.mode === "dagens3");
+
+  useEffect(() => {
+    if (!auth.configured || !auth.user) {
+      setSharedStreaks([]);
+      return;
+    }
+
+    let mounted = true;
+    async function loadShared() {
+      setLoadingSharedStreaks(true);
+      try {
+        const result = await loadMySharedStreaks();
+        if (mounted) setSharedStreaks(result);
+      } catch (error) {
+        console.error("[home] loadMySharedStreaks failed", error);
+        if (mounted) setSharedStreaks([]);
+      } finally {
+        if (mounted) setLoadingSharedStreaks(false);
+      }
+    }
+
+    void loadShared();
+    return () => {
+      mounted = false;
+    };
+  }, [auth.configured, auth.user]);
+
+  const primarySharedStreak = sharedStreaks[0] ?? null;
+  const myTurnCount = auth.user ? sharedStreaks.filter((item) => isMyTurn(item, auth.user!.id)).length : 0;
+  const sharedStreakCount = sharedStreaks.length;
+  const sharedTitle = primarySharedStreak
+    ? `${primarySharedStreak.streak_count} i streak`
+    : auth.user
+      ? "Skapa streak"
+      : "Träna tillsammans";
+  const sharedDescription = primarySharedStreak && auth.user
+    ? myTurnCount > 1
+      ? `Din tur i ${myTurnCount} streaks. Ett Dagens 3 räcker för alla.`
+      : currentTurnLabel(primarySharedStreak, auth.user.id)
+    : auth.user
+      ? "Skapa en egen streak eller dela med en träningskompis."
+      : "Logga in och håll igång med någon annan — eller med dig själv.";
+  const sharedMeta = primarySharedStreak
+    ? `${sharedStreakCount} aktiv ${sharedStreakCount === 1 ? "streak" : "streaks"} · ${primarySharedStreak.members.length} medlem${primarySharedStreak.members.length === 1 ? "" : "mar"}`
+    : loadingSharedStreaks
+      ? "Laddar streak..."
+      : "Gemensam eller egen streak";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -32,6 +85,34 @@ export function HomePage() {
             <span className="text-muted-foreground">dagar</span>
           </div>
         </header>
+
+        <section className="mb-4 rounded-3xl bg-card p-5 shadow-sm ring-1 ring-primary/20">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/15">
+              <Users className="h-5 w-5 text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Streak tillsammans</p>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight">{sharedTitle}</h2>
+                </div>
+                {primarySharedStreak && myTurnCount > 0 && (
+                  <span className="shrink-0 rounded-full bg-primary/15 px-2.5 py-1 text-xs font-medium text-primary">Din tur</span>
+                )}
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">{sharedDescription}</p>
+              <p className="mt-2 text-xs text-muted-foreground">{sharedMeta}</p>
+              <Link
+                to={primarySharedStreak && myTurnCount > 0 ? "/workout" : "/streak"}
+                search={primarySharedStreak && myTurnCount > 0 ? { mode: "dagens3" } : undefined}
+                className="mt-4 flex h-11 w-full items-center justify-center rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99]"
+              >
+                {primarySharedStreak && myTurnCount > 0 ? "Gör Dagens 3" : primarySharedStreak ? "Visa streaks" : "Öppna streak"}
+              </Link>
+            </div>
+          </div>
+        </section>
 
         <section className={`mb-4 rounded-3xl bg-card p-6 shadow-sm ring-1 ${dailyDoneToday ? "ring-primary/30" : "ring-border/60"}`}>
           <div className="flex items-center justify-between">
