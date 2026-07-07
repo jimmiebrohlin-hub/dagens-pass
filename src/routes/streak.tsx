@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Copy, Flame, LogIn, Plus, RefreshCw, Share2, UserPlus, Users } from "lucide-react";
+import { ArrowLeft, Copy, Flame, LogIn, Plus, RefreshCw, Share2, Trash2, UserPlus } from "lucide-react";
 import { signInWithGoogle, useAuthState } from "@/lib/auth";
 import { buildJoinUrl } from "@/lib/inviteLinks";
 import {
@@ -12,6 +12,7 @@ import {
   isPersonalStreak,
   joinSharedStreak,
   loadMySharedStreaks,
+  resetAllSharedStreaksForTest,
   type SharedStreak,
 } from "@/lib/sharedStreaks";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
@@ -138,6 +139,26 @@ function StreakPage() {
     } catch (error) {
       console.error("[streak-page] join failed", error);
       setMessage(`Kunde inte gå med i streak.\nTekniskt fel: ${errorText(error, "Okänt fel.")}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resetAllStreaks() {
+    const confirmed = window.confirm("Rensa ALLA streaks och starta om från noll? Träningshistorik och 100 challenge påverkas inte.");
+    if (!confirmed) return;
+
+    setBusy(true);
+    setMessage(null);
+    try {
+      const result = await resetAllSharedStreaksForTest();
+      setStreaks([]);
+      setSelectedId(null);
+      setReload((value) => value + 1);
+      setMessage(`Streaks rensade. Tog bort ${result.deleted_streaks} streaks, ${result.deleted_members} medlemmar och ${result.deleted_activity} händelser. Ny Min streak skapas automatiskt.`);
+    } catch (error) {
+      console.error("[streak-page] reset failed", error);
+      setMessage(`Kunde inte rensa streaks.\nTekniskt fel: ${errorText(error, "Okänt fel.")}`);
     } finally {
       setBusy(false);
     }
@@ -301,6 +322,14 @@ function StreakPage() {
                   <UserPlus className="h-4 w-4" /> Gå med
                 </button>
               </div>
+            </details>
+
+            <details className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
+              <summary className="cursor-pointer text-sm font-medium">Test / rensa streaks</summary>
+              <p className="mt-2 text-xs text-muted-foreground">Tillfällig testknapp. Rensar alla streaks och skapar om din Min streak. Träningshistorik påverkas inte.</p>
+              <button disabled={busy} onClick={resetAllStreaks} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground disabled:opacity-60">
+                <Trash2 className="h-4 w-4" /> Rensa streaks och börja om
+              </button>
             </details>
 
             {selected && (
