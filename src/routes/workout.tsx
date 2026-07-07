@@ -151,10 +151,6 @@ function WorkoutPage() {
 
   async function finish() {
     if (saving) return;
-    if (dailyDoneToday) {
-      navigate({ to: "/" });
-      return;
-    }
     setSaving(true);
     setState((s) =>
       addSession(s, {
@@ -166,7 +162,7 @@ function WorkoutPage() {
         })),
       }),
     );
-    if (mode === "dagens3") {
+    if (mode === "dagens3" && !dailyDoneToday) {
       try {
         await completeSharedDaily3Turns();
       } catch (error) {
@@ -174,40 +170,6 @@ function WorkoutPage() {
       }
     }
     navigate({ to: "/" });
-  }
-
-  if (dailyDoneToday) {
-    return (
-      <div className="min-h-screen bg-background text-foreground">
-        <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-8 pt-6">
-          <header className="mb-5 rounded-3xl bg-card px-4 py-4 ring-1 ring-border/60">
-            <div className="flex items-center justify-between gap-3">
-              <Link to="/" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-              <div className="min-w-0 flex-1 text-center">
-                <p className="text-lg font-semibold tracking-tight">{APP_NAME}</p>
-                <p className="text-xs text-muted-foreground">Dagens 3 · {intensityLabel(state.intensity)}</p>
-              </div>
-              <div className="w-10" />
-            </div>
-          </header>
-
-          <section className="mt-10 rounded-3xl bg-card p-8 text-center ring-1 ring-primary/30">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/20">
-              <Check className="h-6 w-6 text-primary-foreground/80" />
-            </div>
-            <h1 className="mt-4 text-2xl font-semibold tracking-tight">Dagens 3 är klart idag</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Dagens övningar kan bara göras en gång per dag, från midnatt till midnatt. Nästa Dagens 3 öppnas imorgon.
-            </p>
-            <Link to="/" className="mt-6 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99]">
-              Till startsidan
-            </Link>
-          </section>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -258,6 +220,12 @@ function WorkoutPage() {
           )}
         </header>
 
+        {dailyDoneToday && !finished && (
+          <p className="mb-4 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">
+            Dagens 3 är redan klart idag. Det här sparas som extra pass och påverkar inte streak.
+          </p>
+        )}
+
         {!finished && current ? (
           <main className="flex flex-1 flex-col">
             <section className="rounded-[2rem] bg-card p-5 ring-1 ring-border/60">
@@ -306,7 +274,7 @@ function WorkoutPage() {
             </div>
             <h2 className="mt-4 text-2xl font-semibold tracking-tight">Bra jobbat</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Passet är klart. Min streak och aktuella streaks uppdateras.
+              {dailyDoneToday ? "Extra passet sparas. Streak påverkas inte." : "Passet är klart. Min streak och aktuella streaks uppdateras."}
             </p>
             <button disabled={saving} onClick={finish} className="mt-6 h-12 w-full rounded-2xl bg-primary text-base font-medium text-primary-foreground disabled:opacity-60">
               {saving ? "Sparar..." : "Spara & avsluta"}
