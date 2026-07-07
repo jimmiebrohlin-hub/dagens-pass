@@ -4,8 +4,25 @@ import { CheckCircle2, Flame, Target, Hash, BarChart3, Settings, User, Users } f
 import { useAuthState } from "@/lib/auth";
 import { useAppState, computeStreak, weekCount, todayISO } from "@/lib/storage";
 import { exerciseDose, intensityLabel, pickDailyThree } from "@/lib/exercises";
-import { buddyPartnerName, currentTurnLabel, isBuddyStreak, isMyTurn, isPersonalStreak, loadMySharedStreaks, type SharedStreak } from "@/lib/sharedStreaks";
+import { activeMembers, buddyPartnerName, isBuddyStreak, isMyTurn, isPersonalStreak, loadMySharedStreaks, type SharedStreak } from "@/lib/sharedStreaks";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
+
+function isLegacyGroupStreak(streak: SharedStreak) {
+  return isBuddyStreak(streak) && activeMembers(streak).length > 2;
+}
+
+function streakShortLabel(streak: SharedStreak, userId: string | undefined) {
+  if (isPersonalStreak(streak)) return "Min";
+  if (isLegacyGroupStreak(streak)) return "Grupp";
+  return userId ? buddyPartnerName(streak, userId) : "Någon";
+}
+
+function streakStatusLabel(streak: SharedStreak, userId: string | undefined) {
+  if (isPersonalStreak(streak)) return "alltid";
+  if (isLegacyGroupStreak(streak)) return "gammal";
+  if (!userId) return "";
+  return isMyTurn(streak, userId) ? "din tur" : "väntar";
+}
 
 export function HomePage() {
   const [state] = useAppState();
@@ -48,26 +65,26 @@ export function HomePage() {
   }, [auth.configured, auth.user]);
 
   const personalStreak = sharedStreaks.find(isPersonalStreak) ?? null;
-  const buddyStreaks = sharedStreaks.filter(isBuddyStreak);
+  const buddyStreaks = sharedStreaks.filter((item) => isBuddyStreak(item) && !isLegacyGroupStreak(item));
+  const legacyGroupStreaks = sharedStreaks.filter(isLegacyGroupStreak);
   const myTurnBuddyCount = auth.user ? buddyStreaks.filter((item) => isMyTurn(item, auth.user!.id)).length : 0;
-  const firstBuddy = buddyStreaks[0] ?? null;
+  const previewStreaks = [personalStreak, ...buddyStreaks, ...legacyGroupStreaks].filter((item): item is SharedStreak => Boolean(item)).slice(0, 4);
+  const remainingStreakCount = Math.max(0, sharedStreaks.length - previewStreaks.length);
   const sharedTitle = personalStreak
     ? `${personalStreak.streak_count} i Min streak`
     : auth.user
       ? "Min streak skapas"
       : "Träna tillsammans";
   const sharedDescription = auth.user
-    ? myTurnBuddyCount > 1
-      ? `Din tur i ${myTurnBuddyCount} streaks med någon. Dagens 3 räcker för alla.`
-      : myTurnBuddyCount === 1 && firstBuddy
-        ? `Din tur med ${buddyPartnerName(firstBuddy, auth.user.id)}. Min streak uppdateras också.`
-        : firstBuddy
-          ? currentTurnLabel(firstBuddy, auth.user.id)
-          : "Min streak uppdateras när du gör Dagens 3."
+    ? myTurnBuddyCount > 0
+      ? `Din tur i ${myTurnBuddyCount} ${myTurnBuddyCount === 1 ? "streak" : "streaks"} med någon.`
+      : buddyStreaks.length > 0
+        ? "Du väntar på någon annan i dina person-streaks."
+        : "Min streak uppdateras första gången du gör Dagens 3 idag."
     : "Logga in och håll igång med någon annan — eller med dig själv.";
   const sharedMeta = loadingSharedStreaks
     ? "Laddar streak..."
-    : `${buddyStreaks.length} ${buddyStreaks.length === 1 ? "streak" : "streaks"} med någon · Min streak finns alltid`;
+    : `${buddyStreaks.length} ${buddyStreaks.length === 1 ? "streak" : "streaks"} med någon · ${legacyGroupStreaks.length > 0 ? `${legacyGroupStreaks.length} gammal grupp · ` : ""}Min streak finns alltid`;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -103,6 +120,17 @@ export function HomePage() {
                 )}
               </div>
               <p className="mt-1 text-sm text-muted-foreground">{sharedDescription}</p>
+              {previewStreaks.length > 0 && (
+                <div className="mt-3 grid gap-1.5">
+                  {previewStreaks.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl bg-secondary/55 px-3 py-1.5 text-xs">
+                      <span className="truncate font-medium">{streakShortLabel(item, auth.user?.id)}</span>
+                      <span className="shrink-0 text-muted-foreground">{item.streak_count} · {streakStatusLabel(item, auth.user?.id)}</span>
+                    </div>
+                  ))}
+                  {remainingStreakCount > 0 && <p className="px-1 text-xs text-muted-foreground">+{remainingStreakCount} till</p>}
+                </div>
+              )}
               <p className="mt-2 text-xs text-muted-foreground">{sharedMeta}</p>
               <span className="mt-4 flex h-11 w-full items-center justify-center rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground">
                 Öppna streak
@@ -125,7 +153,7 @@ export function HomePage() {
           </div>
           {dailyDoneToday && (
             <p className="mt-3 rounded-2xl bg-secondary/60 px-3 py-2 text-xs text-muted-foreground">
-              Klart idag. Dagens 3 öppnas igen imorgon.
+              Klart idag. Extra pass påverkar inte streak.
             </p>
           )}
           <ul className="mt-3 space-y-1.5">
@@ -137,15 +165,9 @@ export function HomePage() {
               </li>
             ))}
           </ul>
-          {dailyDoneToday ? (
-            <div className="mt-4 flex h-11 w-full items-center justify-center rounded-2xl bg-secondary text-sm font-medium text-muted-foreground">
-              Dagens 3 klart idag
-            </div>
-          ) : (
-            <Link to="/workout" search={{ mode: "dagens3" }} className="mt-4 flex h-11 w-full items-center justify-center rounded-2xl bg-primary text-sm font-medium text-primary-foreground shadow-sm transition active:scale-[0.99]">
-              Dagens 3
-            </Link>
-          )}
+          <Link to="/workout" search={{ mode: "dagens3" }} className="mt-4 flex h-11 w-full items-center justify-center rounded-2xl bg-primary text-sm font-medium text-primary-foreground shadow-sm transition active:scale-[0.99]">
+            {dailyDoneToday ? "Gör extra Dagens 3" : "Dagens 3"}
+          </Link>
         </section>
 
         <div className="grid grid-cols-2 gap-3">
