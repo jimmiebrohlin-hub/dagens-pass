@@ -106,8 +106,20 @@ export function activeMembers(streak: SharedStreak) {
   return streak.members.filter((member) => member.status === "active").sort((a, b) => a.member_order - b.member_order);
 }
 
+export function isLegacyGroupStreak(streak: SharedStreak) {
+  return isBuddyStreak(streak) && activeMembers(streak).length > 2;
+}
+
+export function isFullBuddyStreak(streak: SharedStreak) {
+  return isBuddyStreak(streak) && activeMembers(streak).length === 2;
+}
+
+export function isOpenBuddyStreak(streak: SharedStreak) {
+  return isBuddyStreak(streak) && activeMembers(streak).length < 2;
+}
+
 export function buddyStreakTimedOut(streak: SharedStreak, now = Date.now()) {
-  if (!isBuddyStreak(streak) || !streak.last_completed_at) return false;
+  if (!isFullBuddyStreak(streak) || !streak.last_completed_at) return false;
   const lastCompleted = new Date(streak.last_completed_at).getTime();
   if (!Number.isFinite(lastCompleted)) return false;
   return now - lastCompleted > BUDDY_STREAK_RETURN_WINDOW_MS;
@@ -134,6 +146,23 @@ async function ensurePersonalStreakIfAvailable() {
   }
 }
 
+async function leaveLegacyGroupStreaksForCurrentUser(userId: string, streaks: SharedStreak[]) {
+  const legacyIds = streaks.filter(isLegacyGroupStreak).map((streak) => streak.id);
+  if (legacyIds.length === 0) return;
+
+  const { error } = await supabase
+    .from("shared_streak_members")
+    .update({ status: "left" })
+    .eq("user_id", userId)
+    .in("streak_id", legacyIds);
+
+  if (error) {
+    console.warn("[shared-streak] could not hide legacy group streaks for current user", error);
+  } else {
+    console.info("[shared-streak] hid legacy group streaks for current user", { count: legacyIds.length });
+  }
+}
+
 async function loadSingleSharedStreakFallback(): Promise<SharedStreak[]> {
   const { data, error } = await supabase.rpc("get_my_shared_streak");
   if (error) {
@@ -155,17 +184,22 @@ export async function loadMySharedStreaks(): Promise<SharedStreak[]> {
   if (error) {
     console.error("[shared-streak] get_my_shared_streaks failed", error);
     if (missingRpc(error, "get_my_shared_streaks")) {
-      return loadSingleSharedStreakFallback();
+      const fallback = await loadSingleSharedStreakFallback();
+      await leaveLegacyGroupStreaksForCurrentUser(user.id, fallback);
+      return fallback.filter((streak) => !isLegacyGroupStreak(streak));
     }
     throw rpcError("Kunde inte ladda streaks via RPC", error);
   }
 
   const streaks = normalizeSharedStreaks(data);
+  await leaveLegacyGroupStreaksForCurrentUser(user.id, streaks);
+  const visibleStreaks = streaks.filter((streak) => !isLegacyGroupStreak(streak));
   console.info("[shared-streak] get_my_shared_streaks result", {
-    streakCount: streaks.length,
-    streakIds: streaks.map((streak) => streak.id),
+    streakCount: visibleStreaks.length,
+    hiddenLegacyGroupCount: streaks.length - visibleStreaks.length,
+    streakIds: visibleStreaks.map((streak) => streak.id),
   });
-  return streaks;
+  return visibleStreaks;
 }
 
 export async function loadMySharedStreak(): Promise<SharedStreak | null> {
@@ -186,7 +220,7 @@ export async function createSharedStreak(name = "Streak med någon"): Promise<Sh
 
   const createdId = typeof data === "string" ? data : null;
   const loaded = await loadMySharedStreaks();
-  const created = loaded.find((streak) => streak.id === createdId) ?? loaded.find((streak) => isBuddyStreak(streak));
+  const created = loaded.find((streak) => streak.id === createdId) ?? loaded.find((streak) => isOpenBuddyStreak(streak));
   if (!created) throw new Error("Streak skapades men kunde inte laddas. Tekniskt: get_my_shared_streaks returnerade ingen ny delad streak.");
   return created;
 }
@@ -210,15 +244,15 @@ export async function joinSharedStreak(inviteCode: string): Promise<SharedStreak
 
   const loaded = await loadMySharedStreaks();
   const matching = loaded.find((streak) => streak.invite_code === code);
-  const fallback = loaded.find((streak) => isBuddyStreak(streak));
+  const fallback = loaded.find((streak) => isFullBuddyStreak(streak) || isOpenBuddyStreak(streak));
   if (!matching && !fallback) throw new Error("Du gick med, men streaken kunde inte laddas. Tekniskt: get_my_shared_streaks returnerade ingen delad streak efter join_shared_streak_by_code.");
   return matching ?? fallback;
 }
 
 async function completeSharedDaily3TurnsClientFallback(userId: string, before: SharedStreak[]): Promise<SharedDaily3CompletionResult> {
-  const candidates = before.filter((streak) => isPersonalStreak(streak) || (isMyTurn(streak, userId) && activeMembers(streak).length >= 2));
+  const candidates = before.filter((streak) => isPersonalStreak(streak) || (isMyTurn(streak, userId) && isFullBuddyStreak(streak)));
   const updated: SharedDaily3CompletionResult["updated"] = [];
-  const skippedNotTurn = before.filter((streak) => isBuddyStreak(streak) && (!isMyTurn(streak, userId) || activeMembers(streak).length < 2)).length;
+  const skippedNotTurn = before.filter((streak) => isBuddyStreak(streak) && (!isMyTurn(streak, userId) || !isFullBuddyStreak(streak))).length;
   let resetCount = 0;
 
   for (const streak of candidates) {
@@ -284,7 +318,8 @@ export async function completeSharedDaily3Turns(): Promise<SharedDaily3Completio
   if (!user) return null;
 
   const before = await loadMySharedStreaks();
-  const hadEligible = before.some((streak) => isPersonalStreak(streak) || (isMyTurn(streak, user.id) && activeMembers(streak).length >= 2));
+  const hasOnlyCleanStreaks = before.every((streak) => isPersonalStreak(streak) || isFullBuddyStreak(streak) || isOpenBuddyStreak(streak));
+  const hadEligible = before.some((streak) => isPersonalStreak(streak) || (isMyTurn(streak, user.id) && isFullBuddyStreak(streak)));
   if (!hadEligible) {
     return {
       updated: [],
@@ -294,6 +329,10 @@ export async function completeSharedDaily3Turns(): Promise<SharedDaily3Completio
       reset_count: 0,
       buddy_window_hours: BUDDY_STREAK_RETURN_WINDOW_HOURS,
     };
+  }
+
+  if (!hasOnlyCleanStreaks) {
+    return completeSharedDaily3TurnsClientFallback(user.id, before);
   }
 
   const { data, error } = await supabase.rpc("complete_shared_daily3_turns");
