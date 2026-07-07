@@ -29,11 +29,44 @@ function displayName(value: string | null | undefined) {
   return value?.trim() || "Medlem";
 }
 
-function rowStatus(streak: SharedStreak, userId: string) {
-  if (isPersonalStreak(streak)) return "Uppdateras alltid";
-  if (isMyTurn(streak, userId)) return "Din tur";
+function isLegacyGroupStreak(streak: SharedStreak) {
+  return isBuddyStreak(streak) && activeMembers(streak).length > 2;
+}
+
+function isOpenBuddyStreak(streak: SharedStreak) {
+  return isBuddyStreak(streak) && activeMembers(streak).length < 2;
+}
+
+function isFullBuddyStreak(streak: SharedStreak) {
+  return isBuddyStreak(streak) && activeMembers(streak).length === 2;
+}
+
+function holderName(streak: SharedStreak) {
   const holder = streak.members.find((member) => member.user_id === streak.current_turn_user_id);
-  return `Väntar på ${displayName(holder?.display_name)}`;
+  return displayName(holder?.display_name);
+}
+
+function streakTitle(streak: SharedStreak, userId: string | undefined) {
+  if (isPersonalStreak(streak)) return "Min streak";
+  if (isLegacyGroupStreak(streak)) return "Gammal gruppstreak";
+  if (isOpenBuddyStreak(streak)) return "Ny streak med någon";
+  return userId ? `Med ${buddyPartnerName(streak, userId)}` : "Med någon";
+}
+
+function streakMeta(streak: SharedStreak) {
+  const count = activeMembers(streak).length;
+  if (isPersonalStreak(streak)) return "bara du";
+  if (isLegacyGroupStreak(streak)) return `${count} medlemmar · äldre modell`;
+  if (isOpenBuddyStreak(streak)) return "1 av 2 medlemmar";
+  return "2 personer";
+}
+
+function streakStatus(streak: SharedStreak, userId: string | undefined) {
+  if (isPersonalStreak(streak)) return "Alltid";
+  if (isLegacyGroupStreak(streak)) return "Gammal";
+  if (isOpenBuddyStreak(streak)) return "Bjud in";
+  if (!userId) return "";
+  return isMyTurn(streak, userId) ? "Din tur" : `Väntar på ${holderName(streak)}`;
 }
 
 function StreakPage() {
@@ -112,15 +145,19 @@ function StreakPage() {
 
   const userId = auth.user?.id;
   const personal = streaks.find(isPersonalStreak) ?? null;
-  const buddies = streaks.filter(isBuddyStreak);
-  const buddiesMyTurn = userId ? buddies.filter((item) => isMyTurn(item, userId)) : [];
-  const buddiesWaiting = userId ? buddies.filter((item) => !isMyTurn(item, userId)) : buddies;
-  const visibleStreaks = [personal, ...buddiesMyTurn, ...buddiesWaiting].filter((item): item is SharedStreak => Boolean(item));
+  const fullBuddies = streaks.filter(isFullBuddyStreak);
+  const openBuddies = streaks.filter(isOpenBuddyStreak);
+  const legacyGroups = streaks.filter(isLegacyGroupStreak);
+  const buddiesMyTurn = userId ? fullBuddies.filter((item) => isMyTurn(item, userId)) : [];
+  const buddiesWaiting = userId ? fullBuddies.filter((item) => !isMyTurn(item, userId)) : fullBuddies;
+  const visibleStreaks = [personal, ...buddiesMyTurn, ...buddiesWaiting, ...openBuddies, ...legacyGroups].filter((item): item is SharedStreak => Boolean(item));
   const selected = visibleStreaks.find((item) => item.id === selectedId) ?? visibleStreaks[0] ?? null;
   const selectedMembers = selected ? activeMembers(selected) : [];
-  const selectedBuddyOpen = Boolean(selected && isBuddyStreak(selected) && selectedMembers.length < 2);
-  const shareUrl = selectedBuddyOpen && selected ? buildJoinUrl(selected.invite_code) : "";
-  const shareText = selectedBuddyOpen && selected
+  const selectedOpenInvite = Boolean(selected && isOpenBuddyStreak(selected));
+  const selectedLegacy = Boolean(selected && isLegacyGroupStreak(selected));
+  const selectedFullBuddy = Boolean(selected && isFullBuddyStreak(selected));
+  const shareUrl = selectedOpenInvite && selected ? buildJoinUrl(selected.invite_code) : "";
+  const shareText = selectedOpenInvite && selected
     ? `Gå med i min Vardagsstyrka-streak:\n${shareUrl}\n\nKod: ${selected.invite_code}`
     : "";
 
@@ -135,7 +172,7 @@ function StreakPage() {
   }
 
   async function share() {
-    if (!selectedBuddyOpen || !selected) return;
+    if (!selectedOpenInvite || !selected) return;
     if (navigator.share) {
       try {
         await navigator.share({ title: "Vardagsstyrka streak", text: shareText, url: shareUrl });
@@ -199,10 +236,10 @@ function StreakPage() {
                   <Flame className="h-6 w-6 text-primary" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">När du gör Dagens 3</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Dagens 3 påverkar</p>
                   <h1 className="mt-1 text-2xl font-semibold tracking-tight">Min streak + {buddiesMyTurn.length} med någon</h1>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Min streak uppdateras alltid. Streaks med någon uppdateras bara när bollen är hos dig.
+                    Första Dagens 3 idag uppdaterar Min streak och de person-streaks där det är din tur. Extra pass påverkar inte streak.
                   </p>
                   <Link to="/workout" search={{ mode: "dagens3" }} className="mt-4 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99]">
                     Gör Dagens 3
@@ -215,31 +252,30 @@ function StreakPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">Mina streaks</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Min streak finns alltid. Övriga är med en person.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Varje rad har egen siffra och egen tur.</p>
                 </div>
                 <span className="rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground">{visibleStreaks.length}</span>
               </div>
               <div className="mt-3 grid gap-2">
                 {visibleStreaks.map((item) => {
-                  const rowIsPersonal = isPersonalStreak(item);
                   const rowActive = item.id === selected?.id;
-                  const count = activeMembers(item).length;
-                  const title = rowIsPersonal ? "Min streak" : `Med ${userId ? buddyPartnerName(item, userId) : "någon"}`;
+                  const rowIsPrimary = isPersonalStreak(item) || (userId && isMyTurn(item, userId) && isFullBuddyStreak(item));
                   return (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => setSelectedId(item.id)}
-                      className={`flex items-center justify-between gap-3 rounded-2xl px-3 py-2 text-left text-sm ring-1 ${rowActive ? "bg-primary/10 ring-primary/30" : "bg-secondary/60 ring-transparent"}`}
+                      className={`flex items-center gap-3 rounded-2xl px-3 py-2 text-left text-sm ring-1 ${rowActive ? "bg-primary/10 ring-primary/30" : "bg-secondary/60 ring-transparent"}`}
                     >
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium">{title}</span>
-                        <span className="block text-xs text-muted-foreground">
-                          {item.streak_count} i streak · {rowIsPersonal ? "bara du" : `${count} av 2 medlemmar`}
-                        </span>
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-card text-base font-semibold">
+                        {item.streak_count}
                       </span>
-                      <span className={`shrink-0 text-xs font-medium ${rowIsPersonal || (userId && isMyTurn(item, userId)) ? "text-primary" : "text-muted-foreground"}`}>
-                        {userId ? rowStatus(item, userId) : ""}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium">{streakTitle(item, userId)}</span>
+                        <span className="block text-xs text-muted-foreground">{streakMeta(item)}</span>
+                      </span>
+                      <span className={`shrink-0 text-xs font-medium ${rowIsPrimary ? "text-primary" : "text-muted-foreground"}`}>
+                        {streakStatus(item, userId)}
                       </span>
                     </button>
                   );
@@ -268,21 +304,30 @@ function StreakPage() {
             </details>
 
             {selected && (
-              <details open className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
-                <summary className="cursor-pointer text-sm font-medium">
-                  Detaljer: {isPersonalStreak(selected) ? "Min streak" : `Med ${userId ? buddyPartnerName(selected, userId) : "någon"}`}
-                </summary>
+              <details open={selectedOpenInvite || selectedLegacy} className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
+                <summary className="cursor-pointer text-sm font-medium">Detaljer: {streakTitle(selected, userId)}</summary>
                 <ul className="mt-3 space-y-1.5">
                   {selectedMembers.map((member) => (
                     <li key={member.user_id} className="flex items-center justify-between gap-3 rounded-2xl bg-secondary/60 px-3 py-2 text-sm">
                       <span className="truncate">{displayName(member.display_name)}{member.user_id === auth.user?.id ? " (du)" : ""}</span>
-                      {member.user_id === selected.current_turn_user_id && isBuddyStreak(selected) && <span className="shrink-0 text-xs font-medium text-primary">Tur</span>}
+                      {member.user_id === selected.current_turn_user_id && isFullBuddyStreak(selected) && <span className="shrink-0 text-xs font-medium text-primary">Tur</span>}
                     </li>
                   ))}
                 </ul>
-                {isPersonalStreak(selected) ? (
-                  <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">Min streak är bara din och uppdateras alltid när du gör Dagens 3.</p>
-                ) : selectedBuddyOpen ? (
+
+                {isPersonalStreak(selected) && (
+                  <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">Min streak är bara din. Den uppdateras första gången du gör Dagens 3 varje dag.</p>
+                )}
+
+                {selectedFullBuddy && (
+                  <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">Den här streaken har två personer. Den kan inte delas vidare.</p>
+                )}
+
+                {selectedLegacy && (
+                  <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">Det här är en äldre gruppstreak med fler än två medlemmar. Den visas för historik, men nya streaks bör skapas med en person i taget.</p>
+                )}
+
+                {selectedOpenInvite && selected && (
                   <>
                     <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Inbjudningskod</p>
                     <div className="relative mt-1 rounded-2xl bg-secondary px-4 py-3 pr-12 text-center text-2xl font-semibold tracking-[0.2em]">
@@ -296,8 +341,6 @@ function StreakPage() {
                     </button>
                     {copyNote && <p className="mt-2 text-center text-xs text-muted-foreground">{copyNote}</p>}
                   </>
-                ) : (
-                  <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">Den här streaken har två medlemmar och kan inte delas vidare.</p>
                 )}
               </details>
             )}
