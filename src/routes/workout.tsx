@@ -162,7 +162,7 @@ function WorkoutPage() {
         })),
       }),
     );
-    if (mode === "dagens3" && !dailyDoneToday) {
+    if (mode === "dagens3") {
       try {
         await completeSharedDaily3Turns();
       } catch (error) {
@@ -274,7 +274,7 @@ function WorkoutPage() {
             </div>
             <h2 className="mt-4 text-2xl font-semibold tracking-tight">Bra jobbat</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {dailyDoneToday ? "Extra passet sparas i historiken. Streak och veckomål räknas fortfarande per dag." : "Passet är klart. Streak och veckans mål uppdateras."}
+              {dailyDoneToday ? "Extra passet sparas i historiken. Gemensamma streaks uppdateras bara om det fortfarande är din tur där." : "Passet är klart. Streak och veckans mål uppdateras."}
             </p>
             <button disabled={saving} onClick={finish} className="mt-6 h-12 w-full rounded-2xl bg-primary text-base font-medium text-primary-foreground disabled:opacity-60">
               {saving ? "Sparar..." : "Spara & avsluta"}
