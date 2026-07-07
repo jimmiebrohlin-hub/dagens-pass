@@ -47,6 +47,7 @@ export interface SharedStreakResetResult {
   deleted_members: number;
   deleted_activity: number;
   personal_streak_id: string | null;
+  fallback?: boolean;
 }
 
 interface RemoteErrorLike {
@@ -82,6 +83,13 @@ function rpcError(prefix: string, error: unknown) {
   return new Error(`${prefix}: ${details}`);
 }
 
+function displayNameFromUser(user: Awaited<ReturnType<typeof getCurrentUser>>) {
+  if (!user) return null;
+  const fullName = typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : null;
+  const name = typeof user.user_metadata?.name === "string" ? user.user_metadata.name : null;
+  return fullName || name || user.email || null;
+}
+
 function normalizeSharedStreak(value: unknown): SharedStreak | null {
   if (!value || typeof value !== "object") return null;
   const streak = value as SharedStreak;
@@ -91,7 +99,7 @@ function normalizeSharedStreak(value: unknown): SharedStreak | null {
       : "buddy";
   return {
     ...streak,
-    streak_kind: streak.streak_kind ?? inferredKind,
+    streak_kind: inferredKind,
     name: inferredKind === "personal" ? "Min streak" : streak.name,
     members: Array.isArray(streak.members) ? streak.members : [],
   } as SharedStreak;
@@ -215,6 +223,71 @@ export async function loadMySharedStreak(): Promise<SharedStreak | null> {
   return streaks[0] ?? null;
 }
 
+async function createPersonalStreakClientFallback(user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>) {
+  const personalId = crypto.randomUUID();
+  const displayName = displayNameFromUser(user);
+
+  const { error: streakError } = await supabase.from("shared_streaks").insert({
+    id: personalId,
+    name: "Min streak",
+    current_turn_user_id: user.id,
+    streak_count: 0,
+    created_by: user.id,
+  });
+
+  if (streakError) throw streakError;
+
+  const { error: memberError } = await supabase.from("shared_streak_members").insert({
+    streak_id: personalId,
+    user_id: user.id,
+    display_name: displayName,
+    member_order: 0,
+    role: "owner",
+    status: "active",
+  });
+
+  if (memberError) throw memberError;
+
+  const { error: activityError } = await supabase.from("shared_streak_activity").insert({
+    streak_id: personalId,
+    user_id: user.id,
+    activity_type: "created",
+    to_user_id: user.id,
+    streak_count_after: 0,
+  });
+
+  if (activityError) console.warn("[shared-streak] client fallback personal activity insert failed", activityError);
+  return personalId;
+}
+
+async function resetSharedStreaksClientFallback(user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>): Promise<SharedStreakResetResult> {
+  const { data: activeMemberships } = await supabase
+    .from("shared_streak_members")
+    .select("streak_id")
+    .eq("user_id", user.id)
+    .eq("status", "active");
+
+  const uniqueStreakIds = new Set((activeMemberships ?? []).map((row: { streak_id: string }) => row.streak_id));
+
+  const { error: leaveError } = await supabase
+    .from("shared_streak_members")
+    .update({ status: "left" })
+    .eq("user_id", user.id)
+    .eq("status", "active");
+
+  if (leaveError) throw leaveError;
+
+  const personalId = await createPersonalStreakClientFallback(user);
+  return {
+    reset: true,
+    deleted_streaks: uniqueStreakIds.size,
+    deleted_members: activeMemberships?.length ?? 0,
+    deleted_activity: 0,
+    personal_streak_id: personalId,
+    fallback: true,
+  };
+}
+
 export async function resetAllSharedStreaksForTest(): Promise<SharedStreakResetResult> {
   if (!supabase) throw new Error("Supabase är inte konfigurerat.");
   const user = await getCurrentUser();
@@ -223,6 +296,9 @@ export async function resetAllSharedStreaksForTest(): Promise<SharedStreakResetR
   const { data, error } = await supabase.rpc("debug_reset_all_shared_streaks");
   if (error) {
     console.error("[shared-streak] debug_reset_all_shared_streaks failed", error);
+    if (missingRpc(error, "debug_reset_all_shared_streaks")) {
+      return resetSharedStreaksClientFallback(user);
+    }
     throw rpcError("Kunde inte rensa streaks via testknappen", error);
   }
 
