@@ -302,7 +302,7 @@ export async function resetAllSharedStreaksForTest(): Promise<SharedStreakResetR
     throw rpcError("Kunde inte rensa streaks via testknappen", error);
   }
 
-  return data as SharedStreakResetResult;
+  return data as unknown as SharedStreakResetResult;
 }
 
 export async function createSharedStreak(name = "Streak med någon"): Promise<SharedStreak> {
@@ -343,8 +343,9 @@ export async function joinSharedStreak(inviteCode: string): Promise<SharedStreak
   const loaded = await loadMySharedStreaks();
   const matching = loaded.find((streak) => streak.invite_code === code);
   const fallback = loaded.find((streak) => isFullBuddyStreak(streak) || isOpenBuddyStreak(streak));
-  if (!matching && !fallback) throw new Error("Du gick med, men streaken kunde inte laddas. Tekniskt: get_my_shared_streaks returnerade ingen delad streak efter join_shared_streak_by_code.");
-  return matching ?? fallback;
+  const resolved = matching ?? fallback;
+  if (!resolved) throw new Error("Du gick med, men streaken kunde inte laddas. Tekniskt: get_my_shared_streaks returnerade ingen delad streak efter join_shared_streak_by_code.");
+  return resolved;
 }
 
 async function completeSharedDaily3TurnsClientFallback(userId: string, before: SharedStreak[]): Promise<SharedDaily3CompletionResult> {
@@ -442,7 +443,7 @@ export async function completeSharedDaily3Turns(): Promise<SharedDaily3Completio
     throw rpcError("Kunde inte uppdatera gemensamma streaks", error);
   }
 
-  const result = data as SharedDaily3CompletionResult;
+  const result = data as unknown as SharedDaily3CompletionResult;
   const normalized = {
     updated: Array.isArray(result?.updated) ? result.updated : [],
     updated_count: Number(result?.updated_count ?? 0),
