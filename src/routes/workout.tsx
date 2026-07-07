@@ -4,6 +4,7 @@ import { ArrowLeft, Check, SkipForward, Info } from "lucide-react";
 import { applyIntensity, exerciseSetDose, intensityLabel, pickDailyThree, pickLarge, pickSmall, type Exercise } from "@/lib/exercises";
 import { playTimerDoneCue, unlockTimerSound } from "@/lib/sound";
 import { todayISO, useAppState, addSession } from "@/lib/storage";
+import { completeSharedDaily3Turns } from "@/lib/sharedStreaks";
 import { APP_NAME } from "@/lib/version";
 
 type Mode = "dagens3" | "halvt" | "stort";
@@ -59,6 +60,7 @@ function WorkoutPage() {
   const [phase, setPhase] = useState<CoachPhase>("exercise");
   const [restSeconds, setRestSeconds] = useState(0);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const restDuration = state.restSeconds ?? REST_SECONDS;
   const restProgressPct = restDuration > 0 ? Math.max(0, Math.min(100, ((restDuration - restSeconds) / restDuration) * 100)) : 0;
@@ -147,7 +149,9 @@ function WorkoutPage() {
     setExerciseIndex((index) => index + 1);
   }
 
-  function finish() {
+  async function finish() {
+    if (saving) return;
+    setSaving(true);
     setState((s) =>
       addSession(s, {
         mode,
@@ -158,6 +162,13 @@ function WorkoutPage() {
         })),
       }),
     );
+    if (mode === "dagens3" && !dailyDoneToday) {
+      try {
+        await completeSharedDaily3Turns();
+      } catch (error) {
+        console.error("[workout] completeSharedDaily3Turns failed", error);
+      }
+    }
     navigate({ to: "/" });
   }
 
@@ -265,8 +276,8 @@ function WorkoutPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               {dailyDoneToday ? "Extra passet sparas i historiken. Streak och veckomål räknas fortfarande per dag." : "Passet är klart. Streak och veckans mål uppdateras."}
             </p>
-            <button onClick={finish} className="mt-6 h-12 w-full rounded-2xl bg-primary text-base font-medium text-primary-foreground">
-              Spara & avsluta
+            <button disabled={saving} onClick={finish} className="mt-6 h-12 w-full rounded-2xl bg-primary text-base font-medium text-primary-foreground disabled:opacity-60">
+              {saving ? "Sparar..." : "Spara & avsluta"}
             </button>
           </div>
         )}
