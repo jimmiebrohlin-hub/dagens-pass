@@ -13,8 +13,7 @@ interface GoogleLoginOptions {
   redirectPath?: string;
 }
 
-function buildRedirectUri(redirectPath?: string) {
-  if (typeof window === "undefined") return undefined;
+function buildRedirectUri(redirectPath?: string): string {
   if (!redirectPath) return window.location.origin;
   const path = redirectPath.startsWith("/") ? redirectPath : `/${redirectPath}`;
   return `${window.location.origin}${path}`;
