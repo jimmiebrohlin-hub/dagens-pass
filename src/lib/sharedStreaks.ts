@@ -1,6 +1,6 @@
 import { getCurrentUser, supabase } from "./supabaseClient";
 
-export const BUDDY_STREAK_RETURN_WINDOW_HOURS = 26;
+export const BUDDY_STREAK_RETURN_WINDOW_HOURS = 36;
 export const BUDDY_STREAK_RETURN_WINDOW_MS = BUDDY_STREAK_RETURN_WINDOW_HOURS * 60 * 60 * 1000;
 
 export interface SharedStreakMember {
