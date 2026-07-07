@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, LogIn, RefreshCw, UserPlus } from "lucide-react";
 import { signInWithGoogle, signOut, useAuthState } from "@/lib/auth";
 import { clearPendingInvite, normalizeInviteCode, rememberPendingInvite } from "@/lib/inviteLinks";
-import { joinSharedStreak, loadMySharedStreak, type SharedStreak } from "@/lib/sharedStreaks";
+import { joinSharedStreak, loadMySharedStreaks, type SharedStreak } from "@/lib/sharedStreaks";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
 
 export const Route = createFileRoute("/join/$inviteCode")({
@@ -30,7 +30,7 @@ function JoinPage() {
   const auth = useAuthState();
   const navigate = useNavigate();
   const [mode, setMode] = useState<JoinMode>("checking");
-  const [currentStreak, setCurrentStreak] = useState<SharedStreak | null>(null);
+  const [matchingStreak, setMatchingStreak] = useState<SharedStreak | null>(null);
   const [status, setStatus] = useState<string>("Förbereder inbjudan...");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -45,7 +45,7 @@ function JoinPage() {
 
     async function checkInviteState() {
       setError(null);
-      setCurrentStreak(null);
+      setMatchingStreak(null);
 
       if (!auth.user) {
         setMode("needs-login");
@@ -57,10 +57,11 @@ function JoinPage() {
       setStatus("Kontrollerar konto och inbjudan...");
 
       try {
-        const existingStreak = await loadMySharedStreak();
+        const existingStreaks = await loadMySharedStreaks();
         if (cancelled) return;
-        setCurrentStreak(existingStreak);
-        if (existingStreak?.invite_code && normalizeInviteCode(existingStreak.invite_code) === normalizedInviteCode) {
+        const matching = existingStreaks.find((streak) => normalizeInviteCode(streak.invite_code) === normalizedInviteCode) ?? null;
+        setMatchingStreak(matching);
+        if (matching) {
           setMode("already-member");
           setStatus("Du är redan medlem i denna streak.");
           return;
@@ -69,7 +70,7 @@ function JoinPage() {
         setStatus("Välj om du vill gå med med nuvarande konto eller byta konto först.");
       } catch (err) {
         if (cancelled) return;
-        console.error("[join-page] loadMySharedStreak failed", err);
+        console.error("[join-page] loadMySharedStreaks failed", err);
         setMode("ready");
         setStatus("Välj om du vill gå med med nuvarande konto eller byta konto först.");
       }
@@ -122,6 +123,8 @@ function JoinPage() {
       const msg = errorMessage(err, "Okänt fel.");
       if (msg.includes("hittades inte")) {
         setError("Koden hittades inte.");
+      } else if (msg.includes("redan två medlemmar")) {
+        setError("Den här streaken har redan två medlemmar.");
       } else {
         setError(`Kunde inte gå med.\nTekniskt fel: ${msg}`);
       }
@@ -132,7 +135,6 @@ function JoinPage() {
   }
 
   const currentUserLabel = userLabel(auth.user);
-  const currentStreakText = currentStreak ? `Nuvarande konto har redan streaken ”${currentStreak.name}”.` : null;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -168,11 +170,7 @@ function JoinPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               Välj det Google-konto som ska vara medlem i streaken. Koden används automatiskt efter inloggning.
             </p>
-            <button
-              disabled={busy}
-              onClick={loginGoogle}
-              className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99] disabled:opacity-60"
-            >
+            <button disabled={busy} onClick={loginGoogle} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99] disabled:opacity-60">
               <LogIn className="h-4 w-4" /> Fortsätt med Google
             </button>
           </section>
@@ -181,22 +179,12 @@ function JoinPage() {
         {mode === "ready" && !error && auth.user && (
           <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
             <p className="text-sm font-medium">Du är inloggad som {currentUserLabel}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {currentStreakText ?? "Kontrollera att detta är kontot som ska gå med."}
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Kontrollera att detta är kontot som ska gå med. En streak kan ha max två personer.</p>
             <div className="mt-4 grid gap-2">
-              <button
-                disabled={busy}
-                onClick={joinAsCurrentUser}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99] disabled:opacity-60"
-              >
+              <button disabled={busy} onClick={joinAsCurrentUser} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99] disabled:opacity-60">
                 <UserPlus className="h-4 w-4" /> Gå med som {currentUserLabel}
               </button>
-              <button
-                disabled={busy}
-                onClick={switchAccount}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-base font-medium text-secondary-foreground active:scale-[0.99] disabled:opacity-60"
-              >
+              <button disabled={busy} onClick={switchAccount} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-base font-medium text-secondary-foreground active:scale-[0.99] disabled:opacity-60">
                 <LogIn className="h-4 w-4" /> Byt konto
               </button>
             </div>
@@ -207,20 +195,13 @@ function JoinPage() {
           <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
             <p className="text-sm font-medium">Du är redan medlem</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Nuvarande konto ({currentUserLabel}) är redan med i denna streak.
+              Nuvarande konto ({currentUserLabel}) är redan med i {matchingStreak?.name ?? "denna streak"}.
             </p>
             <div className="mt-4 grid gap-2">
-              <Link
-                to="/streak"
-                className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99]"
-              >
+              <Link to="/streak" className="flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99]">
                 Öppna streak
               </Link>
-              <button
-                disabled={busy}
-                onClick={switchAccount}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-base font-medium text-secondary-foreground active:scale-[0.99] disabled:opacity-60"
-              >
+              <button disabled={busy} onClick={switchAccount} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-base font-medium text-secondary-foreground active:scale-[0.99] disabled:opacity-60">
                 <LogIn className="h-4 w-4" /> Byt konto
               </button>
             </div>
@@ -232,19 +213,11 @@ function JoinPage() {
             <p className="whitespace-pre-line text-sm text-muted-foreground">{error}</p>
             <div className="mt-4 grid gap-2">
               {auth.user && (
-                <button
-                  disabled={busy}
-                  onClick={joinAsCurrentUser}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-medium text-primary-foreground active:scale-[0.99] disabled:opacity-60"
-                >
+                <button disabled={busy} onClick={joinAsCurrentUser} className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-medium text-primary-foreground active:scale-[0.99] disabled:opacity-60">
                   <RefreshCw className="h-4 w-4" /> Försök igen
                 </button>
               )}
-              <button
-                disabled={busy}
-                onClick={auth.user ? switchAccount : loginGoogle}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99] disabled:opacity-60"
-              >
+              <button disabled={busy} onClick={auth.user ? switchAccount : loginGoogle} className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99] disabled:opacity-60">
                 <LogIn className="h-4 w-4" /> {auth.user ? "Byt konto" : "Logga in med Google"}
               </button>
             </div>
