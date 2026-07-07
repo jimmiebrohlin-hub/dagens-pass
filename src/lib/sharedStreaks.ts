@@ -1,5 +1,8 @@
 import { getCurrentUser, supabase } from "./supabaseClient";
 
+export const BUDDY_STREAK_RETURN_WINDOW_HOURS = 26;
+export const BUDDY_STREAK_RETURN_WINDOW_MS = BUDDY_STREAK_RETURN_WINDOW_HOURS * 60 * 60 * 1000;
+
 export interface SharedStreakMember {
   user_id: string;
   display_name: string | null;
@@ -29,10 +32,13 @@ export interface SharedDaily3CompletionResult {
     streak_count_after: number;
     to_user_id: string | null;
     streak_kind?: SharedStreakKind;
+    reset_by_timeout?: boolean;
   }>;
   updated_count: number;
   skipped_today: number;
   skipped_not_turn: number;
+  reset_count?: number;
+  buddy_window_hours?: number;
 }
 
 interface RemoteErrorLike {
@@ -98,6 +104,13 @@ export function isBuddyStreak(streak: SharedStreak) {
 
 export function activeMembers(streak: SharedStreak) {
   return streak.members.filter((member) => member.status === "active").sort((a, b) => a.member_order - b.member_order);
+}
+
+export function buddyStreakTimedOut(streak: SharedStreak, now = Date.now()) {
+  if (!isBuddyStreak(streak) || !streak.last_completed_at) return false;
+  const lastCompleted = new Date(streak.last_completed_at).getTime();
+  if (!Number.isFinite(lastCompleted)) return false;
+  return now - lastCompleted > BUDDY_STREAK_RETURN_WINDOW_MS;
 }
 
 function nextUserId(streak: SharedStreak, userId: string) {
@@ -203,13 +216,17 @@ export async function joinSharedStreak(inviteCode: string): Promise<SharedStreak
 }
 
 async function completeSharedDaily3TurnsClientFallback(userId: string, before: SharedStreak[]): Promise<SharedDaily3CompletionResult> {
-  const candidates = before.filter((streak) => isPersonalStreak(streak) || isMyTurn(streak, userId));
+  const candidates = before.filter((streak) => isPersonalStreak(streak) || (isMyTurn(streak, userId) && activeMembers(streak).length >= 2));
   const updated: SharedDaily3CompletionResult["updated"] = [];
-  const skippedNotTurn = before.filter((streak) => isBuddyStreak(streak) && !isMyTurn(streak, userId)).length;
+  const skippedNotTurn = before.filter((streak) => isBuddyStreak(streak) && (!isMyTurn(streak, userId) || activeMembers(streak).length < 2)).length;
+  let resetCount = 0;
 
   for (const streak of candidates) {
     const toUserId = nextUserId(streak, userId);
-    const nextCount = streak.streak_count + 1;
+    const resetByTimeout = buddyStreakTimedOut(streak);
+    const nextCount = resetByTimeout ? 1 : streak.streak_count + 1;
+    if (resetByTimeout) resetCount += 1;
+
     let query = supabase
       .from("shared_streaks")
       .update({
@@ -247,6 +264,7 @@ async function completeSharedDaily3TurnsClientFallback(userId: string, before: S
       streak_count_after: nextCount,
       to_user_id: toUserId,
       streak_kind: isPersonalStreak(streak) ? "personal" : "buddy",
+      reset_by_timeout: resetByTimeout,
     });
   }
 
@@ -255,6 +273,8 @@ async function completeSharedDaily3TurnsClientFallback(userId: string, before: S
     updated_count: updated.length,
     skipped_today: 0,
     skipped_not_turn: skippedNotTurn,
+    reset_count: resetCount,
+    buddy_window_hours: BUDDY_STREAK_RETURN_WINDOW_HOURS,
   };
 }
 
@@ -264,13 +284,15 @@ export async function completeSharedDaily3Turns(): Promise<SharedDaily3Completio
   if (!user) return null;
 
   const before = await loadMySharedStreaks();
-  const hadEligible = before.some((streak) => isPersonalStreak(streak) || isMyTurn(streak, user.id));
+  const hadEligible = before.some((streak) => isPersonalStreak(streak) || (isMyTurn(streak, user.id) && activeMembers(streak).length >= 2));
   if (!hadEligible) {
     return {
       updated: [],
       updated_count: 0,
       skipped_today: 0,
       skipped_not_turn: before.filter(isBuddyStreak).length,
+      reset_count: 0,
+      buddy_window_hours: BUDDY_STREAK_RETURN_WINDOW_HOURS,
     };
   }
 
@@ -289,6 +311,8 @@ export async function completeSharedDaily3Turns(): Promise<SharedDaily3Completio
     updated_count: Number(result?.updated_count ?? 0),
     skipped_today: Number(result?.skipped_today ?? 0),
     skipped_not_turn: Number(result?.skipped_not_turn ?? 0),
+    reset_count: Number(result?.reset_count ?? 0),
+    buddy_window_hours: Number(result?.buddy_window_hours ?? BUDDY_STREAK_RETURN_WINDOW_HOURS),
   };
 
   if (normalized.updated_count === 0 && hadEligible) {
