@@ -110,37 +110,33 @@ export function HomePage() {
           </div>
         </Link>
 
-        <section className={`mb-4 rounded-3xl bg-card p-6 shadow-sm ring-1 ${dailyDoneToday ? "ring-primary/30" : "ring-border/60"}`}>
-          <div className="flex items-center justify-between">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Idag</p>
-            <p className="text-xs text-muted-foreground">{intensityLabel(state.intensity)} · 2–10 min</p>
-          </div>
-          <div className="mt-2 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-3xl font-semibold tracking-tight">Dagens 3</h2>
-              <p className="mt-1 text-sm text-muted-foreground">En övning för ben, en för överkropp och en för core.</p>
+        <section className={`mb-4 rounded-3xl bg-card p-5 shadow-sm ring-1 ${dailyDoneToday ? "ring-primary/30" : "ring-border/60"}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Idag · {intensityLabel(state.intensity)} · 2–10 min</p>
+              <h2 className="mt-1 text-2xl font-semibold tracking-tight">Dagens 3</h2>
             </div>
             {dailyDoneToday && (
-              <div className="flex shrink-0 items-center gap-1 rounded-full bg-primary/15 px-3 py-1.5 text-xs font-medium">
+              <div className="flex shrink-0 items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-xs font-medium">
                 <CheckCircle2 className="h-4 w-4" /> Klart
               </div>
             )}
           </div>
           {dailyDoneToday && (
-            <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">
-              Dagens 3 är redan sparat idag. Du kan ändå göra passet igen om du vill.
+            <p className="mt-3 rounded-2xl bg-secondary/60 px-3 py-2 text-xs text-muted-foreground">
+              Klart idag. Du kan göra passet igen.
             </p>
           )}
-          <ul className="mt-4 space-y-2">
+          <ul className="mt-3 space-y-1.5">
             {daily.map((e, i) => (
-              <li key={e.id} className="flex items-center gap-3 text-[15px]">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary-foreground/80">{i + 1}</span>
+              <li key={e.id} className="flex items-center gap-3 text-sm">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary-foreground/80">{i + 1}</span>
                 <span className="truncate">{e.name}</span>
                 <span className="ml-auto whitespace-nowrap text-xs text-muted-foreground">{exerciseDose(e, state.intensity)}</span>
               </li>
             ))}
           </ul>
-          <Link to="/workout" search={{ mode: "dagens3" }} className="mt-6 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-base font-medium text-primary-foreground shadow-sm transition active:scale-[0.99]">
+          <Link to="/workout" search={{ mode: "dagens3" }} className="mt-4 flex h-11 w-full items-center justify-center rounded-2xl bg-primary text-sm font-medium text-primary-foreground shadow-sm transition active:scale-[0.99]">
             Dagens 3
           </Link>
         </section>
@@ -156,15 +152,10 @@ export function HomePage() {
             <p className="mt-3 text-sm font-medium">Stort blandpass</p>
             <p className="text-xs text-muted-foreground">ca 20 övningar · {intensityLabel(state.intensity).toLowerCase()}</p>
           </Link>
-          <Link to="/hundred" className="group rounded-2xl bg-card p-4 ring-1 ring-border/60 transition active:scale-[0.99]">
+          <Link to="/hundred" className="group col-span-2 rounded-2xl bg-card p-4 ring-1 ring-border/60 transition active:scale-[0.99]">
             <Hash className="h-5 w-5 text-primary" />
             <p className="mt-3 text-sm font-medium">100 challenge</p>
             <p className="text-xs text-muted-foreground">Bygg mot 100 reps</p>
-          </Link>
-          <Link to="/streak" className="group rounded-2xl bg-card p-4 ring-1 ring-border/60 transition active:scale-[0.99]">
-            <Users className="h-5 w-5 text-primary" />
-            <p className="mt-3 text-sm font-medium">Streak</p>
-            <p className="text-xs text-muted-foreground">Håll igång tillsammans</p>
           </Link>
         </div>
 
