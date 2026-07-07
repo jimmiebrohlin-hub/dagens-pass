@@ -63,7 +63,7 @@ export function HomePage() {
         ? `Din tur med ${buddyPartnerName(firstBuddy, auth.user.id)}. Min streak uppdateras också.`
         : firstBuddy
           ? currentTurnLabel(firstBuddy, auth.user.id)
-          : "Min streak uppdateras varje gång du gör Dagens 3."
+          : "Min streak uppdateras när du gör Dagens 3."
     : "Logga in och håll igång med någon annan — eller med dig själv.";
   const sharedMeta = loadingSharedStreaks
     ? "Laddar streak..."
@@ -125,7 +125,7 @@ export function HomePage() {
           </div>
           {dailyDoneToday && (
             <p className="mt-3 rounded-2xl bg-secondary/60 px-3 py-2 text-xs text-muted-foreground">
-              Klart idag. Du kan göra passet igen.
+              Klart idag. Dagens 3 öppnas igen imorgon.
             </p>
           )}
           <ul className="mt-3 space-y-1.5">
@@ -137,9 +137,15 @@ export function HomePage() {
               </li>
             ))}
           </ul>
-          <Link to="/workout" search={{ mode: "dagens3" }} className="mt-4 flex h-11 w-full items-center justify-center rounded-2xl bg-primary text-sm font-medium text-primary-foreground shadow-sm transition active:scale-[0.99]">
-            Dagens 3
-          </Link>
+          {dailyDoneToday ? (
+            <div className="mt-4 flex h-11 w-full items-center justify-center rounded-2xl bg-secondary text-sm font-medium text-muted-foreground">
+              Dagens 3 klart idag
+            </div>
+          ) : (
+            <Link to="/workout" search={{ mode: "dagens3" }} className="mt-4 flex h-11 w-full items-center justify-center rounded-2xl bg-primary text-sm font-medium text-primary-foreground shadow-sm transition active:scale-[0.99]">
+              Dagens 3
+            </Link>
+          )}
         </section>
 
         <div className="grid grid-cols-2 gap-3">
