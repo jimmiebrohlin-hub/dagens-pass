@@ -3,18 +3,8 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Copy, Flame, LogIn, Plus, RefreshCw, Share2, Trash2, UserPlus } from "lucide-react";
 import { signInWithGoogle, useAuthState } from "@/lib/auth";
 import { buildJoinUrl } from "@/lib/inviteLinks";
-import {
-  activeMembers,
-  buddyPartnerName,
-  createSharedStreak,
-  isBuddyStreak,
-  isMyTurn,
-  isPersonalStreak,
-  joinSharedStreak,
-  loadMySharedStreaks,
-  resetAllSharedStreaksForTest,
-  type SharedStreak,
-} from "@/lib/sharedStreaks";
+import { filterHiddenStreaks, softResetStreaksFromVisibleList } from "@/lib/streakSoftReset";
+import { activeMembers, buddyPartnerName, createSharedStreak, isBuddyStreak, isMyTurn, isPersonalStreak, joinSharedStreak, loadMySharedStreaks, resetAllSharedStreaksForTest, type SharedStreak } from "@/lib/sharedStreaks";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
 
 export const Route = createFileRoute("/streak")({
@@ -23,23 +13,37 @@ export const Route = createFileRoute("/streak")({
 });
 
 function errorText(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
+  if (error instanceof Error && error.message) return error.message;
+  if (error && typeof error === "object") {
+    try {
+      const remote = error as { message?: string; code?: string; details?: string; hint?: string };
+      const parts = [remote.message, remote.code ? `code: ${remote.code}` : null, remote.details ? `details: ${remote.details}` : null, remote.hint ? `hint: ${remote.hint}` : null].filter(Boolean);
+      return parts.length > 0 ? parts.join(" | ") : JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }
+  return fallback;
 }
 
 function displayName(value: string | null | undefined) {
   return value?.trim() || "Medlem";
 }
 
-function isLegacyGroupStreak(streak: SharedStreak) {
-  return isBuddyStreak(streak) && activeMembers(streak).length > 2;
+function members(streak: SharedStreak) {
+  return activeMembers(streak);
 }
 
-function isOpenBuddyStreak(streak: SharedStreak) {
-  return isBuddyStreak(streak) && activeMembers(streak).length < 2;
+function isOldGroup(streak: SharedStreak) {
+  return isBuddyStreak(streak) && members(streak).length > 2;
 }
 
-function isFullBuddyStreak(streak: SharedStreak) {
-  return isBuddyStreak(streak) && activeMembers(streak).length === 2;
+function isOpenBuddy(streak: SharedStreak) {
+  return isBuddyStreak(streak) && members(streak).length < 2;
+}
+
+function isFullBuddy(streak: SharedStreak) {
+  return isBuddyStreak(streak) && members(streak).length === 2;
 }
 
 function holderName(streak: SharedStreak) {
@@ -47,25 +51,25 @@ function holderName(streak: SharedStreak) {
   return displayName(holder?.display_name);
 }
 
-function streakTitle(streak: SharedStreak, userId: string | undefined) {
+function titleFor(streak: SharedStreak, userId: string | undefined) {
   if (isPersonalStreak(streak)) return "Min streak";
-  if (isLegacyGroupStreak(streak)) return "Gammal gruppstreak";
-  if (isOpenBuddyStreak(streak)) return "Ny streak med någon";
+  if (isOldGroup(streak)) return "Gammal gruppstreak";
+  if (isOpenBuddy(streak)) return "Ny streak med någon";
   return userId ? `Med ${buddyPartnerName(streak, userId)}` : "Med någon";
 }
 
-function streakMeta(streak: SharedStreak) {
-  const count = activeMembers(streak).length;
+function metaFor(streak: SharedStreak) {
+  const count = members(streak).length;
   if (isPersonalStreak(streak)) return "bara du";
-  if (isLegacyGroupStreak(streak)) return `${count} medlemmar · äldre modell`;
-  if (isOpenBuddyStreak(streak)) return "1 av 2 medlemmar";
+  if (isOldGroup(streak)) return `${count} medlemmar · äldre modell`;
+  if (isOpenBuddy(streak)) return "1 av 2 medlemmar";
   return "2 personer";
 }
 
-function streakStatus(streak: SharedStreak, userId: string | undefined) {
+function statusFor(streak: SharedStreak, userId: string | undefined) {
   if (isPersonalStreak(streak)) return "Alltid";
-  if (isLegacyGroupStreak(streak)) return "Gammal";
-  if (isOpenBuddyStreak(streak)) return "Bjud in";
+  if (isOldGroup(streak)) return "Gammal";
+  if (isOpenBuddy(streak)) return "Bjud in";
   if (!userId) return "";
   return isMyTurn(streak, userId) ? "Din tur" : `Väntar på ${holderName(streak)}`;
 }
@@ -84,17 +88,14 @@ function StreakPage() {
   useEffect(() => {
     if (!auth.configured || !auth.user) return;
     let alive = true;
-
     async function load() {
       setLoading(true);
       setMessage(null);
       try {
-        const result = await loadMySharedStreaks();
+        const result = filterHiddenStreaks(await loadMySharedStreaks());
         if (!alive) return;
         setStreaks(result);
-        setSelectedId((current) =>
-          current && result.some((item) => item.id === current) ? current : result[0]?.id ?? null,
-        );
+        setSelectedId((current) => current && result.some((item) => item.id === current) ? current : result[0]?.id ?? null);
       } catch (error) {
         console.error("[streak-page] load failed", error);
         if (alive) setMessage(`Kunde inte ladda streak.\nTekniskt fel: ${errorText(error, "Okänt fel.")}`);
@@ -102,11 +103,8 @@ function StreakPage() {
         if (alive) setLoading(false);
       }
     }
-
     void load();
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [auth.configured, auth.user, reload]);
 
   async function createBuddy() {
@@ -144,10 +142,9 @@ function StreakPage() {
     }
   }
 
-  async function resetAllStreaks() {
-    const confirmed = window.confirm("Rensa ALLA streaks och starta om från noll? Träningshistorik och 100 challenge påverkas inte.");
+  async function startFresh() {
+    const confirmed = window.confirm("Starta om streaktestet? Träningshistorik och 100 challenge påverkas inte.");
     if (!confirmed) return;
-
     setBusy(true);
     setMessage(null);
     try {
@@ -155,10 +152,18 @@ function StreakPage() {
       setStreaks([]);
       setSelectedId(null);
       setReload((value) => value + 1);
-      setMessage(`Streaks rensade. Tog bort ${result.deleted_streaks} streaks, ${result.deleted_members} medlemmar och ${result.deleted_activity} händelser. Ny Min streak skapas automatiskt.`);
+      setMessage(`Streaktestet är omstartat. ${result.deleted_streaks} gamla streaks togs bort eller ersattes.`);
     } catch (error) {
-      console.error("[streak-page] reset failed", error);
-      setMessage(`Kunde inte rensa streaks.\nTekniskt fel: ${errorText(error, "Okänt fel.")}`);
+      console.warn("[streak-page] remote restart failed; trying local restart", error);
+      try {
+        const result = await softResetStreaksFromVisibleList(streaks);
+        setStreaks([result.personal]);
+        setSelectedId(result.personal.id);
+        setMessage(`Streaktestet är omstartat lokalt. Gamla streaks döljs i appen och ny Min streak är skapad.`);
+      } catch (softError) {
+        console.error("[streak-page] local restart failed", softError);
+        setMessage(`Kunde inte starta om streaktestet.\nTekniskt fel: ${errorText(softError, errorText(error, "Okänt fel."))}`);
+      }
     } finally {
       setBusy(false);
     }
@@ -166,21 +171,19 @@ function StreakPage() {
 
   const userId = auth.user?.id;
   const personal = streaks.find(isPersonalStreak) ?? null;
-  const fullBuddies = streaks.filter(isFullBuddyStreak);
-  const openBuddies = streaks.filter(isOpenBuddyStreak);
-  const legacyGroups = streaks.filter(isLegacyGroupStreak);
+  const fullBuddies = streaks.filter(isFullBuddy);
+  const openBuddies = streaks.filter(isOpenBuddy);
+  const oldGroups = streaks.filter(isOldGroup);
   const buddiesMyTurn = userId ? fullBuddies.filter((item) => isMyTurn(item, userId)) : [];
   const buddiesWaiting = userId ? fullBuddies.filter((item) => !isMyTurn(item, userId)) : fullBuddies;
-  const visibleStreaks = [personal, ...buddiesMyTurn, ...buddiesWaiting, ...openBuddies, ...legacyGroups].filter((item): item is SharedStreak => Boolean(item));
+  const visibleStreaks = [personal, ...buddiesMyTurn, ...buddiesWaiting, ...openBuddies, ...oldGroups].filter((item): item is SharedStreak => Boolean(item));
   const selected = visibleStreaks.find((item) => item.id === selectedId) ?? visibleStreaks[0] ?? null;
-  const selectedMembers = selected ? activeMembers(selected) : [];
-  const selectedOpenInvite = Boolean(selected && isOpenBuddyStreak(selected));
-  const selectedLegacy = Boolean(selected && isLegacyGroupStreak(selected));
-  const selectedFullBuddy = Boolean(selected && isFullBuddyStreak(selected));
+  const selectedMembers = selected ? members(selected) : [];
+  const selectedOpenInvite = Boolean(selected && isOpenBuddy(selected));
+  const selectedOldGroup = Boolean(selected && isOldGroup(selected));
+  const selectedFullBuddy = Boolean(selected && isFullBuddy(selected));
   const shareUrl = selectedOpenInvite && selected ? buildJoinUrl(selected.invite_code) : "";
-  const shareText = selectedOpenInvite && selected
-    ? `Gå med i min Vardagsstyrka-streak:\n${shareUrl}\n\nKod: ${selected.invite_code}`
-    : "";
+  const shareText = selectedOpenInvite && selected ? `Gå med i min Vardagsstyrka-streak:\n${shareUrl}\n\nKod: ${selected.invite_code}` : "";
 
   async function copy(text: string, note: string) {
     try {
@@ -209,172 +212,26 @@ function StreakPage() {
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-md px-5 pb-16 pt-8">
         <header className="mb-6 flex items-center justify-between">
-          <Link to="/" className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div className="text-center">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Streak</p>
-            <p className="mt-1 text-[10px] text-muted-foreground">{APP_VERSION}</p>
-          </div>
-          <button
-            type="button"
-            disabled={loading || busy || !auth.user}
-            onClick={() => setReload((value) => value + 1)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary disabled:opacity-60"
-            aria-label="Ladda om"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </button>
+          <Link to="/" className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary"><ArrowLeft className="h-4 w-4" /></Link>
+          <div className="text-center"><p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Streak</p><p className="mt-1 text-[10px] text-muted-foreground">{APP_VERSION}</p></div>
+          <button type="button" disabled={loading || busy || !auth.user} onClick={() => setReload((value) => value + 1)} className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary disabled:opacity-60" aria-label="Ladda om"><RefreshCw className="h-4 w-4" /></button>
         </header>
 
-        {auth.configured && auth.loading && (
-          <section className="rounded-2xl bg-card p-5 ring-1 ring-border/60">
-            <p className="text-sm text-muted-foreground">Laddar konto...</p>
-          </section>
-        )}
+        {auth.configured && auth.loading && <section className="rounded-2xl bg-card p-5 ring-1 ring-border/60"><p className="text-sm text-muted-foreground">Laddar konto...</p></section>}
+        {auth.configured && !auth.loading && !auth.user && <section className="rounded-2xl bg-card p-5 ring-1 ring-border/60"><p className="text-sm font-medium">Logga in för att använda streak</p><p className="mt-1 text-sm text-muted-foreground">Du får alltid Min streak och kan skapa streaks med en person i taget.</p><button onClick={() => signInWithGoogle()} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground"><LogIn className="h-4 w-4" /> Logga in med Google</button></section>}
+        {auth.user && loading && <section className="rounded-2xl bg-card p-5 ring-1 ring-border/60"><p className="text-sm text-muted-foreground">Laddar streaks...</p></section>}
 
-        {auth.configured && !auth.loading && !auth.user && (
-          <section className="rounded-2xl bg-card p-5 ring-1 ring-border/60">
-            <p className="text-sm font-medium">Logga in för att använda streak</p>
-            <p className="mt-1 text-sm text-muted-foreground">Du får alltid Min streak och kan skapa streaks med en person i taget.</p>
-            <button onClick={() => signInWithGoogle()} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground">
-              <LogIn className="h-4 w-4" /> Logga in med Google
-            </button>
-          </section>
-        )}
+        {auth.user && !loading && <>
+          <section className="rounded-3xl bg-card p-5 ring-1 ring-primary/25"><div className="flex items-start gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/15"><Flame className="h-6 w-6 text-primary" /></div><div className="min-w-0 flex-1"><p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Dagens 3 påverkar</p><h1 className="mt-1 text-2xl font-semibold tracking-tight">Min streak + {buddiesMyTurn.length} med någon</h1><p className="mt-2 text-sm text-muted-foreground">Första Dagens 3 idag uppdaterar Min streak och de person-streaks där det är din tur. Extra pass påverkar inte streak.</p><Link to="/workout" search={{ mode: "dagens3" }} className="mt-4 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99]">Gör Dagens 3</Link></div></div></section>
 
-        {auth.user && loading && (
-          <section className="rounded-2xl bg-card p-5 ring-1 ring-border/60">
-            <p className="text-sm text-muted-foreground">Laddar streaks...</p>
-          </section>
-        )}
+          <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60"><div className="flex items-center justify-between"><div><p className="text-sm font-medium">Mina streaks</p><p className="mt-1 text-xs text-muted-foreground">Varje rad har egen siffra och egen tur.</p></div><span className="rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground">{visibleStreaks.length}</span></div><div className="mt-3 grid gap-2">{visibleStreaks.map((item) => { const rowActive = item.id === selected?.id; const rowIsPrimary = isPersonalStreak(item) || (userId && isMyTurn(item, userId) && isFullBuddy(item)); return <button key={item.id} type="button" onClick={() => setSelectedId(item.id)} className={`flex items-center gap-3 rounded-2xl px-3 py-2 text-left text-sm ring-1 ${rowActive ? "bg-primary/10 ring-primary/30" : "bg-secondary/60 ring-transparent"}`}><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-card text-base font-semibold">{item.streak_count}</span><span className="min-w-0 flex-1"><span className="block truncate font-medium">{titleFor(item, userId)}</span><span className="block text-xs text-muted-foreground">{metaFor(item)}</span></span><span className={`shrink-0 text-xs font-medium ${rowIsPrimary ? "text-primary" : "text-muted-foreground"}`}>{statusFor(item, userId)}</span></button>; })}</div></section>
 
-        {auth.user && !loading && (
-          <>
-            <section className="rounded-3xl bg-card p-5 ring-1 ring-primary/25">
-              <div className="flex items-start gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/15">
-                  <Flame className="h-6 w-6 text-primary" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Dagens 3 påverkar</p>
-                  <h1 className="mt-1 text-2xl font-semibold tracking-tight">Min streak + {buddiesMyTurn.length} med någon</h1>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Första Dagens 3 idag uppdaterar Min streak och de person-streaks där det är din tur. Extra pass påverkar inte streak.
-                  </p>
-                  <Link to="/workout" search={{ mode: "dagens3" }} className="mt-4 flex h-12 w-full items-center justify-center rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99]">
-                    Gör Dagens 3
-                  </Link>
-                </div>
-              </div>
-            </section>
+          <details className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60"><summary className="cursor-pointer text-sm font-medium">Lägg till streak med någon</summary><p className="mt-2 text-xs text-muted-foreground">Skapa en inbjudan till en person eller gå med med en kod du fått.</p><button disabled={busy} onClick={createBuddy} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-medium text-primary-foreground disabled:opacity-60"><Plus className="h-4 w-4" /> Skapa inbjudan</button><div className="mt-3 flex gap-2"><input value={joinCode} onChange={(event) => setJoinCode(event.target.value.toUpperCase())} placeholder="KOD" className="h-11 min-w-0 flex-1 rounded-2xl bg-secondary px-4 text-center text-sm font-semibold uppercase tracking-[0.18em] outline-none ring-1 ring-border/60" maxLength={12} /><button disabled={busy || joinCode.trim().length < 4} onClick={join} className="flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-2xl bg-secondary px-4 text-sm font-medium disabled:opacity-60"><UserPlus className="h-4 w-4" /> Gå med</button></div></details>
 
-            <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Mina streaks</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Varje rad har egen siffra och egen tur.</p>
-                </div>
-                <span className="rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground">{visibleStreaks.length}</span>
-              </div>
-              <div className="mt-3 grid gap-2">
-                {visibleStreaks.map((item) => {
-                  const rowActive = item.id === selected?.id;
-                  const rowIsPrimary = isPersonalStreak(item) || (userId && isMyTurn(item, userId) && isFullBuddyStreak(item));
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setSelectedId(item.id)}
-                      className={`flex items-center gap-3 rounded-2xl px-3 py-2 text-left text-sm ring-1 ${rowActive ? "bg-primary/10 ring-primary/30" : "bg-secondary/60 ring-transparent"}`}
-                    >
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-card text-base font-semibold">
-                        {item.streak_count}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">{streakTitle(item, userId)}</span>
-                        <span className="block text-xs text-muted-foreground">{streakMeta(item)}</span>
-                      </span>
-                      <span className={`shrink-0 text-xs font-medium ${rowIsPrimary ? "text-primary" : "text-muted-foreground"}`}>
-                        {streakStatus(item, userId)}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
+          <details className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60"><summary className="cursor-pointer text-sm font-medium">Test / börja om</summary><p className="mt-2 text-xs text-muted-foreground">Tillfällig testknapp. Startar om streaktestet. Träningshistorik påverkas inte.</p><button disabled={busy} onClick={startFresh} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground disabled:opacity-60"><Trash2 className="h-4 w-4" /> Börja om med streaks</button></details>
 
-            <details className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
-              <summary className="cursor-pointer text-sm font-medium">Lägg till streak med någon</summary>
-              <p className="mt-2 text-xs text-muted-foreground">Skapa en inbjudan till en person eller gå med med en kod du fått.</p>
-              <button disabled={busy} onClick={createBuddy} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-medium text-primary-foreground disabled:opacity-60">
-                <Plus className="h-4 w-4" /> Skapa inbjudan
-              </button>
-              <div className="mt-3 flex gap-2">
-                <input
-                  value={joinCode}
-                  onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
-                  placeholder="KOD"
-                  className="h-11 min-w-0 flex-1 rounded-2xl bg-secondary px-4 text-center text-sm font-semibold uppercase tracking-[0.18em] outline-none ring-1 ring-border/60"
-                  maxLength={12}
-                />
-                <button disabled={busy || joinCode.trim().length < 4} onClick={join} className="flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-2xl bg-secondary px-4 text-sm font-medium disabled:opacity-60">
-                  <UserPlus className="h-4 w-4" /> Gå med
-                </button>
-              </div>
-            </details>
-
-            <details className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
-              <summary className="cursor-pointer text-sm font-medium">Test / rensa streaks</summary>
-              <p className="mt-2 text-xs text-muted-foreground">Tillfällig testknapp. Rensar alla streaks och skapar om din Min streak. Träningshistorik påverkas inte.</p>
-              <button disabled={busy} onClick={resetAllStreaks} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground disabled:opacity-60">
-                <Trash2 className="h-4 w-4" /> Rensa streaks och börja om
-              </button>
-            </details>
-
-            {selected && (
-              <details open={selectedOpenInvite || selectedLegacy} className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
-                <summary className="cursor-pointer text-sm font-medium">Detaljer: {streakTitle(selected, userId)}</summary>
-                <ul className="mt-3 space-y-1.5">
-                  {selectedMembers.map((member) => (
-                    <li key={member.user_id} className="flex items-center justify-between gap-3 rounded-2xl bg-secondary/60 px-3 py-2 text-sm">
-                      <span className="truncate">{displayName(member.display_name)}{member.user_id === auth.user?.id ? " (du)" : ""}</span>
-                      {member.user_id === selected.current_turn_user_id && isFullBuddyStreak(selected) && <span className="shrink-0 text-xs font-medium text-primary">Tur</span>}
-                    </li>
-                  ))}
-                </ul>
-
-                {isPersonalStreak(selected) && (
-                  <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">Min streak är bara din. Den uppdateras första gången du gör Dagens 3 varje dag.</p>
-                )}
-
-                {selectedFullBuddy && (
-                  <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">Den här streaken har två personer. Den kan inte delas vidare.</p>
-                )}
-
-                {selectedLegacy && (
-                  <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">Det här är en äldre gruppstreak med fler än två medlemmar. Den visas för historik, men nya streaks bör skapas med en person i taget.</p>
-                )}
-
-                {selectedOpenInvite && selected && (
-                  <>
-                    <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Inbjudningskod</p>
-                    <div className="relative mt-1 rounded-2xl bg-secondary px-4 py-3 pr-12 text-center text-2xl font-semibold tracking-[0.2em]">
-                      <span>{selected.invite_code}</span>
-                      <button type="button" onClick={() => copy(selected.invite_code, "Kod kopierad")} className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-card/80" aria-label="Kopiera kod">
-                        <Copy className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <button type="button" onClick={share} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-medium text-primary-foreground">
-                      <Share2 className="h-4 w-4" /> Dela inbjudan
-                    </button>
-                    {copyNote && <p className="mt-2 text-center text-xs text-muted-foreground">{copyNote}</p>}
-                  </>
-                )}
-              </details>
-            )}
-          </>
-        )}
+          {selected && <details open={selectedOpenInvite || selectedOldGroup} className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60"><summary className="cursor-pointer text-sm font-medium">Detaljer: {titleFor(selected, userId)}</summary><ul className="mt-3 space-y-1.5">{selectedMembers.map((member) => <li key={member.user_id} className="flex items-center justify-between gap-3 rounded-2xl bg-secondary/60 px-3 py-2 text-sm"><span className="truncate">{displayName(member.display_name)}{member.user_id === auth.user?.id ? " (du)" : ""}</span>{member.user_id === selected.current_turn_user_id && isFullBuddy(selected) && <span className="shrink-0 text-xs font-medium text-primary">Tur</span>}</li>)}</ul>{isPersonalStreak(selected) && <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">Min streak är bara din. Den uppdateras första gången du gör Dagens 3 varje dag.</p>}{selectedFullBuddy && <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">Den här streaken har två personer. Den kan inte delas vidare.</p>}{selectedOldGroup && <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">Det här är en äldre gruppstreak med fler än två medlemmar. Nya streaks bör skapas med en person i taget.</p>}{selectedOpenInvite && selected && <><p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Inbjudningskod</p><div className="relative mt-1 rounded-2xl bg-secondary px-4 py-3 pr-12 text-center text-2xl font-semibold tracking-[0.2em]"><span>{selected.invite_code}</span><button type="button" onClick={() => copy(selected.invite_code, "Kod kopierad")} className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-card/80" aria-label="Kopiera kod"><Copy className="h-4 w-4" /></button></div><button type="button" onClick={share} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-medium text-primary-foreground"><Share2 className="h-4 w-4" /> Dela inbjudan</button>{copyNote && <p className="mt-2 text-center text-xs text-muted-foreground">{copyNote}</p>}</>}</details>}
+        </>}
 
         {message && <section className="mt-4 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground"><p className="whitespace-pre-line break-words">{message}</p></section>}
       </div>
