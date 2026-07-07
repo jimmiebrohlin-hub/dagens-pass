@@ -86,7 +86,7 @@ export function HomePage() {
           </div>
         </header>
 
-        <section className="mb-4 rounded-3xl bg-card p-5 shadow-sm ring-1 ring-primary/20">
+        <Link to="/streak" className="mb-4 block rounded-3xl bg-card p-5 shadow-sm ring-1 ring-primary/20 transition active:scale-[0.99]">
           <div className="flex items-start gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/15">
               <Users className="h-5 w-5 text-primary" />
@@ -103,16 +103,12 @@ export function HomePage() {
               </div>
               <p className="mt-1 text-sm text-muted-foreground">{sharedDescription}</p>
               <p className="mt-2 text-xs text-muted-foreground">{sharedMeta}</p>
-              <Link
-                to={primarySharedStreak && myTurnCount > 0 ? "/workout" : "/streak"}
-                search={primarySharedStreak && myTurnCount > 0 ? { mode: "dagens3" } : undefined}
-                className="mt-4 flex h-11 w-full items-center justify-center rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99]"
-              >
-                {primarySharedStreak && myTurnCount > 0 ? "Gör Dagens 3" : primarySharedStreak ? "Visa streaks" : "Öppna streak"}
-              </Link>
+              <span className="mt-4 flex h-11 w-full items-center justify-center rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground">
+                Öppna streak
+              </span>
             </div>
           </div>
-        </section>
+        </Link>
 
         <section className={`mb-4 rounded-3xl bg-card p-6 shadow-sm ring-1 ${dailyDoneToday ? "ring-primary/30" : "ring-border/60"}`}>
           <div className="flex items-center justify-between">
