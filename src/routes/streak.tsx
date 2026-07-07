@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Copy, Flame, Hand, Link2, LogIn, Plus, RefreshCw, Share2, UserPlus, Users } from "lucide-react";
+import { ArrowLeft, Copy, Flame, Hand, LogIn, Plus, RefreshCw, Share2, UserPlus, Users } from "lucide-react";
 import { signInWithGoogle, useAuthState } from "@/lib/auth";
+import { buildJoinUrl } from "@/lib/inviteLinks";
 import { createSharedStreak, currentTurnLabel, joinSharedStreak, loadMySharedStreak, type SharedStreak } from "@/lib/sharedStreaks";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
 
@@ -56,7 +57,7 @@ function StreakPage() {
     try {
       const result = await createSharedStreak();
       setStreak(result);
-      setMessage("Streak skapad. Dela koden med din träningskompis.");
+      setMessage("Streak skapad. Dela inbjudan med din träningskompis.");
     } catch (error) {
       console.error("[streak-page] createSharedStreak failed", error);
       setMessage(`Kunde inte skapa streak.\nTekniskt fel: ${errorMessage(error, "Okänt fel vid skapande.")}`);
@@ -85,9 +86,9 @@ function StreakPage() {
   const activeMembers = streak?.members.filter((member) => member.status === "active") ?? [];
   const memberCount = activeMembers.length;
 
-  const shareUrl = streak && typeof window !== "undefined" ? `${window.location.origin}/join/${streak.invite_code}` : "";
+  const shareUrl = streak ? buildJoinUrl(streak.invite_code) : "";
   const shareText = streak
-    ? `Du är inbjuden till en gemensam streak i Vardagsstyrka.\nÖppna: ${shareUrl}\nKod: ${streak.invite_code}`
+    ? `Gå med i vår Vardagsstyrka-streak:\n${shareUrl}\n\nKod: ${streak.invite_code}`
     : "";
 
   async function copyText(text: string, note: string) {
@@ -241,29 +242,20 @@ function StreakPage() {
                 </ul>
                 <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Inbjudningskod</p>
                 <p className="mt-1 rounded-2xl bg-secondary px-4 py-3 text-center text-2xl font-semibold tracking-[0.2em] text-secondary-foreground">{streak.invite_code}</p>
-                <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Delningslänk</p>
-                <p className="mt-1 break-all rounded-2xl bg-secondary px-4 py-3 text-center text-xs text-secondary-foreground">{shareUrl}</p>
                 <div className="mt-3 grid gap-2">
                   <button
                     type="button"
                     onClick={shareInvite}
                     className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-medium text-primary-foreground active:scale-[0.99]"
                   >
-                    <Share2 className="h-4 w-4" /> Dela via SMS / app
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => copyText(`${shareUrl}\nKod: ${streak.invite_code}`, "Länk + kod kopierat")}
-                    className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99]"
-                  >
-                    <Link2 className="h-4 w-4" /> Kopiera länk + kod
+                    <Share2 className="h-4 w-4" /> Dela inbjudan
                   </button>
                   <button
                     type="button"
                     onClick={() => copyText(streak.invite_code, "Kod kopierad")}
                     className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99]"
                   >
-                    <Copy className="h-4 w-4" /> Kopiera bara kod
+                    <Copy className="h-4 w-4" /> Kopiera kod
                   </button>
                   {copyNote && <p className="text-center text-xs text-muted-foreground">{copyNote}</p>}
                 </div>
