@@ -78,6 +78,16 @@ function normalizeSharedStreaks(value: unknown): SharedStreak[] {
   return value.map(normalizeSharedStreak).filter((item): item is SharedStreak => Boolean(item));
 }
 
+function nextUserId(streak: SharedStreak, userId: string) {
+  const activeMembers = streak.members
+    .filter((member) => member.status === "active")
+    .sort((a, b) => a.member_order - b.member_order);
+  if (activeMembers.length === 0) return userId;
+  const currentIndex = activeMembers.findIndex((member) => member.user_id === userId);
+  if (currentIndex < 0) return activeMembers[0]?.user_id ?? userId;
+  return activeMembers[(currentIndex + 1) % activeMembers.length]?.user_id ?? userId;
+}
+
 async function loadSingleSharedStreakFallback(): Promise<SharedStreak[]> {
   const { data, error } = await supabase.rpc("get_my_shared_streak");
   if (error) {
@@ -153,25 +163,97 @@ export async function joinSharedStreak(inviteCode: string): Promise<SharedStreak
   return matching ?? fallback;
 }
 
+async function completeSharedDaily3TurnsClientFallback(userId: string, before: SharedStreak[]): Promise<SharedDaily3CompletionResult> {
+  const candidates = before.filter((streak) => isMyTurn(streak, userId));
+  const updated: SharedDaily3CompletionResult["updated"] = [];
+  let skippedNotTurn = before.length - candidates.length;
+
+  for (const streak of candidates) {
+    const toUserId = nextUserId(streak, userId);
+    const nextCount = streak.streak_count + 1;
+    const { error: updateError } = await supabase
+      .from("shared_streaks")
+      .update({
+        streak_count: nextCount,
+        last_completed_at: new Date().toISOString(),
+        current_turn_user_id: toUserId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", streak.id)
+      .eq("current_turn_user_id", userId);
+
+    if (updateError) {
+      console.error("[shared-streak] client fallback update failed", { streakId: streak.id, updateError });
+      continue;
+    }
+
+    const { error: activityError } = await supabase.from("shared_streak_activity").insert({
+      streak_id: streak.id,
+      user_id: userId,
+      activity_type: "daily3_done",
+      from_user_id: userId,
+      to_user_id: toUserId,
+      streak_count_after: nextCount,
+    });
+
+    if (activityError) {
+      console.warn("[shared-streak] client fallback activity insert failed", { streakId: streak.id, activityError });
+    }
+
+    updated.push({
+      streak_id: streak.id,
+      streak_count_after: nextCount,
+      to_user_id: toUserId,
+    });
+  }
+
+  return {
+    updated,
+    updated_count: updated.length,
+    skipped_today: 0,
+    skipped_not_turn: skippedNotTurn,
+  };
+}
+
 export async function completeSharedDaily3Turns(): Promise<SharedDaily3CompletionResult | null> {
   if (!supabase) return null;
   const user = await getCurrentUser();
   if (!user) return null;
 
+  const before = await loadMySharedStreaks();
+  const hadMyTurn = before.some((streak) => isMyTurn(streak, user.id));
+  if (!hadMyTurn) {
+    return {
+      updated: [],
+      updated_count: 0,
+      skipped_today: 0,
+      skipped_not_turn: before.length,
+    };
+  }
+
   const { data, error } = await supabase.rpc("complete_shared_daily3_turns");
   if (error) {
     console.error("[shared-streak] complete_shared_daily3_turns failed", error);
-    if (missingRpc(error, "complete_shared_daily3_turns")) return null;
+    if (missingRpc(error, "complete_shared_daily3_turns")) {
+      return completeSharedDaily3TurnsClientFallback(user.id, before);
+    }
     throw rpcError("Kunde inte uppdatera gemensamma streaks", error);
   }
 
   const result = data as SharedDaily3CompletionResult;
-  return {
+  const normalized = {
     updated: Array.isArray(result?.updated) ? result.updated : [],
     updated_count: Number(result?.updated_count ?? 0),
     skipped_today: Number(result?.skipped_today ?? 0),
     skipped_not_turn: Number(result?.skipped_not_turn ?? 0),
   };
+
+  if (normalized.updated_count === 0 && hadMyTurn) {
+    console.warn("[shared-streak] RPC updated 0 streaks despite current turn. Running client fallback.", normalized);
+    return completeSharedDaily3TurnsClientFallback(user.id, before);
+  }
+
+  return normalized;
 }
 
 export function isMyTurn(streak: SharedStreak, userId: string) {
