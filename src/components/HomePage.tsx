@@ -4,7 +4,7 @@ import { CheckCircle2, Flame, Target, Hash, BarChart3, Settings, User, Users } f
 import { useAuthState } from "@/lib/auth";
 import { useAppState, computeStreak, weekCount, todayISO } from "@/lib/storage";
 import { exerciseDose, intensityLabel, pickDailyThree } from "@/lib/exercises";
-import { currentTurnLabel, isMyTurn, loadMySharedStreaks, type SharedStreak } from "@/lib/sharedStreaks";
+import { buddyPartnerName, currentTurnLabel, isBuddyStreak, isMyTurn, isPersonalStreak, loadMySharedStreaks, type SharedStreak } from "@/lib/sharedStreaks";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
 
 export function HomePage() {
@@ -47,26 +47,27 @@ export function HomePage() {
     };
   }, [auth.configured, auth.user]);
 
-  const primarySharedStreak = sharedStreaks[0] ?? null;
-  const myTurnCount = auth.user ? sharedStreaks.filter((item) => isMyTurn(item, auth.user!.id)).length : 0;
-  const sharedStreakCount = sharedStreaks.length;
-  const sharedTitle = primarySharedStreak
-    ? `${primarySharedStreak.streak_count} i streak`
+  const personalStreak = sharedStreaks.find(isPersonalStreak) ?? null;
+  const buddyStreaks = sharedStreaks.filter(isBuddyStreak);
+  const myTurnBuddyCount = auth.user ? buddyStreaks.filter((item) => isMyTurn(item, auth.user!.id)).length : 0;
+  const firstBuddy = buddyStreaks[0] ?? null;
+  const sharedTitle = personalStreak
+    ? `${personalStreak.streak_count} i Min streak`
     : auth.user
-      ? "Skapa streak"
+      ? "Min streak skapas"
       : "Träna tillsammans";
-  const sharedDescription = primarySharedStreak && auth.user
-    ? myTurnCount > 1
-      ? `Din tur i ${myTurnCount} streaks. Ett Dagens 3 räcker för alla.`
-      : currentTurnLabel(primarySharedStreak, auth.user.id)
-    : auth.user
-      ? "Skapa en egen streak eller dela med en träningskompis."
-      : "Logga in och håll igång med någon annan — eller med dig själv.";
-  const sharedMeta = primarySharedStreak
-    ? `${sharedStreakCount} aktiv ${sharedStreakCount === 1 ? "streak" : "streaks"} · ${primarySharedStreak.members.length} medlem${primarySharedStreak.members.length === 1 ? "" : "mar"}`
-    : loadingSharedStreaks
-      ? "Laddar streak..."
-      : "Gemensam eller egen streak";
+  const sharedDescription = auth.user
+    ? myTurnBuddyCount > 1
+      ? `Din tur i ${myTurnBuddyCount} streaks med någon. Dagens 3 räcker för alla.`
+      : myTurnBuddyCount === 1 && firstBuddy
+        ? `Din tur med ${buddyPartnerName(firstBuddy, auth.user.id)}. Min streak uppdateras också.`
+        : firstBuddy
+          ? currentTurnLabel(firstBuddy, auth.user.id)
+          : "Min streak uppdateras varje gång du gör Dagens 3."
+    : "Logga in och håll igång med någon annan — eller med dig själv.";
+  const sharedMeta = loadingSharedStreaks
+    ? "Laddar streak..."
+    : `${buddyStreaks.length} ${buddyStreaks.length === 1 ? "streak" : "streaks"} med någon · Min streak finns alltid`;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -94,10 +95,10 @@ export function HomePage() {
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Streak tillsammans</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Streak</p>
                   <h2 className="mt-1 text-xl font-semibold tracking-tight">{sharedTitle}</h2>
                 </div>
-                {primarySharedStreak && myTurnCount > 0 && (
+                {myTurnBuddyCount > 0 && (
                   <span className="shrink-0 rounded-full bg-primary/15 px-2.5 py-1 text-xs font-medium text-primary">Din tur</span>
                 )}
               </div>
