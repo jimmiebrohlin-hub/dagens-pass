@@ -1,7 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, SkipForward, Info } from "lucide-react";
-import { applyIntensity, exerciseSetDose, intensityLabel, pickDailyThree, pickLarge, pickSmall, type Exercise } from "@/lib/exercises";
+import {
+  WORKOUT_FOCUS_OPTIONS,
+  applyIntensity,
+  exerciseSetDose,
+  intensityLabel,
+  pickDailyThree,
+  pickLarge,
+  pickSmall,
+  workoutFocusLabel,
+  type Exercise,
+  type WorkoutFocus,
+} from "@/lib/exercises";
 import { playTimerDoneCue, unlockTimerSound } from "@/lib/sound";
 import { todayISO, useAppState, addSession } from "@/lib/storage";
 import { completeSharedDaily3Turns } from "@/lib/sharedStreaks";
@@ -12,6 +23,7 @@ type CoachPhase = "exercise" | "rest";
 type PendingAction = "next-set" | "next-exercise";
 
 const REST_SECONDS = 45;
+const VALID_FOCUS: WorkoutFocus[] = ["mix", "lower", "upper", "core", "gentle"];
 const EXERCISE_IMAGES: Record<string, string> = {
   armhavningar: "/exercises/armhavningar.png",
   bankdips: "/exercises/bankdips.png",
@@ -35,24 +47,37 @@ const EXERCISE_IMAGES: Record<string, string> = {
   vadpress: "/exercises/vadpress.png",
 };
 
+function parseFocus(value: unknown): WorkoutFocus | undefined {
+  return typeof value === "string" && VALID_FOCUS.includes(value as WorkoutFocus) ? (value as WorkoutFocus) : undefined;
+}
+
 export const Route = createFileRoute("/workout")({
-  validateSearch: (s: Record<string, unknown>): { mode: Mode } => ({
+  validateSearch: (s: Record<string, unknown>): { mode: Mode; focus?: WorkoutFocus } => ({
     mode: s.mode === "stort" ? "stort" : s.mode === "halvt" ? "halvt" : "dagens3",
+    focus: parseFocus(s.focus),
   }),
   head: () => ({ meta: [{ title: `Pass — ${APP_NAME}` }] }),
   component: WorkoutPage,
 });
 
 function WorkoutPage() {
-  const { mode } = Route.useSearch();
+  const { mode, focus } = Route.useSearch();
   const navigate = useNavigate();
   const [state, setState] = useAppState();
   const today = todayISO();
+  const needsFocusChoice = mode === "halvt" && !focus;
+  const activeFocus = focus ?? "mix";
 
   const exercises = useMemo<Exercise[]>(
-    () => (mode === "stort" ? pickLarge(today + "l", state.preferences) : mode === "halvt" ? pickSmall(today + "s", state.preferences) : pickDailyThree(today, state.preferences)),
-    [mode, today, state.preferences],
+    () => {
+      if (needsFocusChoice) return [];
+      if (mode === "stort") return pickLarge(today + "l", state.preferences);
+      if (mode === "halvt") return pickSmall(today + "s", state.preferences, activeFocus);
+      return pickDailyThree(today, state.preferences);
+    },
+    [activeFocus, mode, needsFocusChoice, state.preferences, today],
   );
+  const exerciseKey = exercises.map((exercise) => exercise.id).join("|");
 
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const [setNumberIndex, setSetNumberIndex] = useState(0);
@@ -62,14 +87,25 @@ function WorkoutPage() {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    setExerciseIndex(0);
+    setSetNumberIndex(0);
+    setDone(exercises.map(() => false));
+    setPhase("exercise");
+    setRestSeconds(0);
+    setPendingAction(null);
+    setSaving(false);
+  }, [exerciseKey]);
+
   const restDuration = state.restSeconds ?? REST_SECONDS;
   const restProgressPct = restDuration > 0 ? Math.max(0, Math.min(100, ((restDuration - restSeconds) / restDuration) * 100)) : 0;
   const current = exercises[exerciseIndex];
   const adjusted = current ? applyIntensity(current, state.intensity) : undefined;
   const totalSets = adjusted?.sets ?? 1;
   const currentSet = Math.min(setNumberIndex + 1, totalSets);
-  const finished = exerciseIndex >= exercises.length;
+  const finished = !needsFocusChoice && exerciseIndex >= exercises.length;
   const title = mode === "stort" ? "Stort blandpass" : mode === "halvt" ? "Litet blandpass" : "Dagens 3";
+  const titleDetail = mode === "halvt" ? `${title} · ${workoutFocusLabel(activeFocus)}` : title;
   const dailyDoneToday = mode === "dagens3" && state.sessions.some((session) => session.date === today && session.mode === "dagens3");
   const nextPreview = exercises[exerciseIndex + 1];
 
@@ -172,6 +208,46 @@ function WorkoutPage() {
     navigate({ to: "/" });
   }
 
+  if (needsFocusChoice) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-8 pt-6">
+          <header className="mb-5 rounded-3xl bg-card px-4 py-4 ring-1 ring-border/60">
+            <div className="flex items-center justify-between gap-3">
+              <Link to="/" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary">
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+              <div className="min-w-0 flex-1 text-center">
+                <p className="text-lg font-semibold tracking-tight">Litet blandpass</p>
+                <p className="text-xs text-muted-foreground">Välj fokus · {intensityLabel(state.intensity)}</p>
+              </div>
+              <div className="w-10" />
+            </div>
+          </header>
+
+          <section className="rounded-[2rem] bg-card p-5 ring-1 ring-border/60">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Vad vill du träna idag?</p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight">Välj typ av pass</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Appen varvar övningarna så att samma muskelgrupp inte kommer direkt efter varandra när det går.</p>
+            <div className="mt-5 grid gap-2">
+              {WORKOUT_FOCUS_OPTIONS.map((option) => (
+                <Link
+                  key={option.id}
+                  to="/workout"
+                  search={{ mode: "halvt", focus: option.id }}
+                  className="rounded-2xl bg-secondary px-4 py-3 text-left ring-1 ring-border/40 active:scale-[0.99]"
+                >
+                  <span className="block text-base font-medium">{option.label}</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">{option.description}</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-8 pt-6">
@@ -182,7 +258,7 @@ function WorkoutPage() {
             </Link>
             <div className="min-w-0 flex-1 text-center">
               <p className="text-lg font-semibold tracking-tight">{APP_NAME}</p>
-              <p className="text-xs text-muted-foreground">{title} · {intensityLabel(state.intensity)}</p>
+              <p className="text-xs text-muted-foreground">{titleDetail} · {intensityLabel(state.intensity)}</p>
             </div>
             <div className="w-10" />
           </div>
