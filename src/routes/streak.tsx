@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Copy, Flame, LogIn, Plus, RefreshCw, Share2, UserPlus } from "lucide-react";
 import { signInWithGoogle, useAuthState } from "@/lib/auth";
 import { buildJoinUrl } from "@/lib/inviteLinks";
-import { filterHiddenStreaks } from "@/lib/streakSoftReset";
 import {
   activeMembers,
   buddyPartnerName,
@@ -108,7 +107,7 @@ function StreakPage() {
       setLoading(true);
       setMessage(null);
       try {
-        const result = filterHiddenStreaks(await loadMySharedStreaks());
+        const result = await loadMySharedStreaks();
         if (!alive) return;
         setStreaks(result);
         setSelectedId((current) => (current && result.some((item) => item.id === current) ? current : result[0]?.id ?? null));
