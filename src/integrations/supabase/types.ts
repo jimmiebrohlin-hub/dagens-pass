@@ -220,6 +220,50 @@ export type Database = {
         }
         Relationships: []
       }
+      streak_turn_email_notifications: {
+        Row: {
+          created_at: string
+          email: string
+          from_user_id: string
+          id: string
+          provider_message_id: string | null
+          sent_at: string
+          streak_count_after: number
+          streak_id: string
+          to_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          from_user_id: string
+          id?: string
+          provider_message_id?: string | null
+          sent_at?: string
+          streak_count_after: number
+          streak_id: string
+          to_user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          from_user_id?: string
+          id?: string
+          provider_message_id?: string | null
+          sent_at?: string
+          streak_count_after?: number
+          streak_id?: string
+          to_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "streak_turn_email_notifications_streak_id_fkey"
+            columns: ["streak_id"]
+            isOneToOne: false
+            referencedRelation: "shared_streaks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_settings: {
         Row: {
           created_at: string
