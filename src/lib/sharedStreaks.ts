@@ -129,6 +129,34 @@ async function ensurePersonalStreak() {
   }
 }
 
+async function notifyBuddyTurnRecipients(result: SharedDaily3CompletionResult, currentUserId: string) {
+  const handoffs = result.updated.filter(
+    (item) => item.to_user_id && item.to_user_id !== currentUserId && item.streak_kind !== "personal",
+  );
+
+  if (handoffs.length === 0) return;
+
+  const notifications = handoffs.map(async (handoff) => {
+    const { error } = await supabase.functions.invoke("notify-streak-turn", {
+      body: {
+        streak_id: handoff.streak_id,
+        to_user_id: handoff.to_user_id,
+        streak_count_after: handoff.streak_count_after,
+      },
+    });
+
+    if (error) {
+      console.error("[shared-streak] notify-streak-turn failed", {
+        streakId: handoff.streak_id,
+        toUserId: handoff.to_user_id,
+        error,
+      });
+    }
+  });
+
+  await Promise.allSettled(notifications);
+}
+
 export async function loadMySharedStreaks(): Promise<SharedStreak[]> {
   if (!supabase) throw new Error("Supabase är inte konfigurerat.");
   const user = await getCurrentUser();
@@ -205,7 +233,7 @@ export async function completeSharedDaily3Turns(): Promise<SharedDaily3Completio
   }
 
   const result = data as unknown as SharedDaily3CompletionResult;
-  return {
+  const normalized: SharedDaily3CompletionResult = {
     updated: Array.isArray(result?.updated) ? result.updated : [],
     updated_count: Number(result?.updated_count ?? 0),
     skipped_today: Number(result?.skipped_today ?? 0),
@@ -213,6 +241,9 @@ export async function completeSharedDaily3Turns(): Promise<SharedDaily3Completio
     reset_count: Number(result?.reset_count ?? 0),
     buddy_window_hours: Number(result?.buddy_window_hours ?? BUDDY_STREAK_RETURN_WINDOW_HOURS),
   };
+
+  await notifyBuddyTurnRecipients(normalized, user.id);
+  return normalized;
 }
 
 export function isMyTurn(streak: SharedStreak, userId: string) {
