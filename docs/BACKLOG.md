@@ -4,17 +4,15 @@
 
 | Prio | Område | Backlog item | Storlek | Status/beroende |
 |---:|---|---|:---:|---|
-| 1 | Build | Verifiera Lovable-build för 0.7.64 och att appversionen visas korrekt | XS | Lokal ren installation och produktionsbuild är grön |
-| 2 | Streak-mejl | Byt till ett nytt app-lösenord innan produktionssättning | XS | Säkerhetssteg före drift |
-| 3 | Streak-mejl | Lägg in Lovable/Supabase-secrets för Gmail SMTP och app-URL | S | Väntar på Lovable-credits 1 aug |
-| 4 | Streak-mejl | Kör migrationerna för mejlaudit och `user_notification_preferences` | XS | Väntar på Lovable-credits 1 aug |
-| 5 | Streak-mejl | Deploya `notify-streak-turn` Edge Function med Gmail SMTP-versionen | S | Väntar på Lovable-credits 1 aug |
-| 6 | Streak-mejl | End-to-end-test med två Google-konton: exakt ett mejl per bollöverlämning samt av/på-inställning | M | Efter deploy/secrets |
-| 7 | Streak-mejl | Kontrollera att Gmail SMTP fungerar från Supabase Edge Functions; byt annars till Gmail API över HTTPS | M | Teknisk risk efter deploy |
-| 8 | Träning | Lägg fokusval även på Stort blandpass | S | Ej startad |
-| 9 | Kvalitet | Lägg automatiska tester för programurval och muskelgruppsalternering | M | Ej startad |
-| 10 | Kvalitet | Lägg integrationstest för streak-RPC, 36h-logik och mejldubblettskydd | L | Ej startad |
-| 11 | UX | Utvärdera Coach Mode på mobil och finjustera bildhöjd/knappplacering efter test | S | Efter Lovable-build av 0.7.64 |
+| 1 | Streak-mejl | Byt till ett nytt app-lösenord innan produktionssättning | XS | Säkerhetssteg före drift |
+| 2 | Streak-mejl | Lägg in Lovable/Supabase-secrets för Gmail SMTP och app-URL | S | Väntar på Lovable-credits 1 aug |
+| 3 | Streak-mejl | Kör migrationerna för mejlaudit och `user_notification_preferences` | XS | Väntar på Lovable-credits 1 aug |
+| 4 | Streak-mejl | Deploya `notify-streak-turn` Edge Function med Gmail SMTP-versionen | S | Väntar på Lovable-credits 1 aug |
+| 5 | Streak-mejl | End-to-end-test med två Google-konton: exakt ett mejl per bollöverlämning samt av/på-inställning | M | Efter deploy/secrets |
+| 6 | Streak-mejl | Kontrollera att Gmail SMTP fungerar från Supabase Edge Functions; byt annars till Gmail API över HTTPS | M | Teknisk risk efter deploy |
+| 7 | Kvalitet | Lägg automatiska tester för programurval och muskelgruppsalternering | M | Ej startad |
+| 8 | Kvalitet | Lägg integrationstest för streak-RPC, 36h-logik och mejldubblettskydd | L | Ej startad |
+| 9 | UX | Utvärdera Coach Mode på mobil och finjustera bildhöjd/knappplacering efter test | S | 0.7.64 bygger; väntar på mobiltest |
 
 ## Klart
 
@@ -29,7 +27,9 @@
 | Streak | 36h kvar, sluttid och varningsnivå visas på startsidan och streaksidan |
 | Träning | Coach Mode med en tydlig träningsvy och separat vilovy är implementerat |
 | Träning | Enhetliga textfria illustrationer är tillagda för nya övningar |
+| Träning | Samma fem fokusval används för både Litet blandpass och Stort blandpass |
 | Build | `package-lock.json` är synkad med Lovable-konfiguration 2.7.1 och verifierad med ren `npm ci` + produktionsbuild |
+| Build | 0.7.64 är bekräftad byggd i Lovable |
 
 ## Konfiguration som ska läggas in 1 augusti
 
