@@ -5,6 +5,7 @@ import { useAuthState } from "@/lib/auth";
 import { useAppState, computeStreak, weekCount, todayISO } from "@/lib/storage";
 import { exerciseDose, intensityLabel, pickDailyThree } from "@/lib/exercises";
 import { activeMembers, buddyPartnerName, isBuddyStreak, isMyTurn, isPersonalStreak, loadMySharedStreaks, type SharedStreak } from "@/lib/sharedStreaks";
+import { getBuddyTurnTimeStatus } from "@/lib/streakTiming";
 import { APP_NAME, APP_VERSION } from "@/lib/version";
 
 function isLegacyGroupStreak(streak: SharedStreak) {
@@ -21,7 +22,9 @@ function streakStatusLabel(streak: SharedStreak, userId: string | undefined) {
   if (isPersonalStreak(streak)) return "alltid";
   if (isLegacyGroupStreak(streak)) return "gammal";
   if (!userId) return "";
-  return isMyTurn(streak, userId) ? "din tur" : "väntar";
+  const time = getBuddyTurnTimeStatus(streak);
+  const base = isMyTurn(streak, userId) ? "din tur" : "väntar";
+  return time ? `${base} · ${time.remainingLabel}` : base;
 }
 
 export function HomePage() {
@@ -67,7 +70,12 @@ export function HomePage() {
   const personalStreak = sharedStreaks.find(isPersonalStreak) ?? null;
   const buddyStreaks = sharedStreaks.filter((item) => isBuddyStreak(item) && !isLegacyGroupStreak(item));
   const legacyGroupStreaks = sharedStreaks.filter(isLegacyGroupStreak);
-  const myTurnBuddyCount = auth.user ? buddyStreaks.filter((item) => isMyTurn(item, auth.user!.id)).length : 0;
+  const myTurnBuddies = auth.user ? buddyStreaks.filter((item) => isMyTurn(item, auth.user!.id)) : [];
+  const myTurnBuddyCount = myTurnBuddies.length;
+  const mostUrgentTurn = myTurnBuddies
+    .map((item) => getBuddyTurnTimeStatus(item))
+    .filter((item): item is NonNullable<typeof item> => Boolean(item))
+    .sort((a, b) => a.remainingMs - b.remainingMs)[0];
   const previewStreaks = [personalStreak, ...buddyStreaks, ...legacyGroupStreaks].filter((item): item is SharedStreak => Boolean(item)).slice(0, 4);
   const remainingStreakCount = Math.max(0, sharedStreaks.length - previewStreaks.length);
   const sharedTitle = personalStreak
@@ -77,7 +85,7 @@ export function HomePage() {
       : "Träna tillsammans";
   const sharedDescription = auth.user
     ? myTurnBuddyCount > 0
-      ? `Din tur i ${myTurnBuddyCount} ${myTurnBuddyCount === 1 ? "streak" : "streaks"} med någon.`
+      ? `Din tur i ${myTurnBuddyCount} ${myTurnBuddyCount === 1 ? "streak" : "streaks"}${mostUrgentTurn ? ` · ${mostUrgentTurn.remainingLabel}` : ""}.`
       : buddyStreaks.length > 0
         ? "Du väntar på någon annan i dina person-streaks."
         : "Min streak uppdateras första gången du gör Dagens 3 idag."
@@ -115,9 +123,7 @@ export function HomePage() {
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Streak</p>
                   <h2 className="mt-1 text-xl font-semibold tracking-tight">{sharedTitle}</h2>
                 </div>
-                {myTurnBuddyCount > 0 && (
-                  <span className="shrink-0 rounded-full bg-primary/15 px-2.5 py-1 text-xs font-medium text-primary">Din tur</span>
-                )}
+                {myTurnBuddyCount > 0 && <span className="shrink-0 rounded-full bg-primary/15 px-2.5 py-1 text-xs font-medium text-primary">Din tur</span>}
               </div>
               <p className="mt-1 text-sm text-muted-foreground">{sharedDescription}</p>
               {previewStreaks.length > 0 && (
@@ -132,9 +138,7 @@ export function HomePage() {
                 </div>
               )}
               <p className="mt-2 text-xs text-muted-foreground">{sharedMeta}</p>
-              <span className="mt-4 flex h-11 w-full items-center justify-center rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground">
-                Öppna streak
-              </span>
+              <span className="mt-4 flex h-11 w-full items-center justify-center rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground">Öppna streak</span>
             </div>
           </div>
         </Link>
@@ -151,17 +155,13 @@ export function HomePage() {
               </div>
             )}
           </div>
-          {dailyDoneToday && (
-            <p className="mt-3 rounded-2xl bg-secondary/60 px-3 py-2 text-xs text-muted-foreground">
-              Klart idag. Extra pass påverkar inte streak.
-            </p>
-          )}
+          {dailyDoneToday && <p className="mt-3 rounded-2xl bg-secondary/60 px-3 py-2 text-xs text-muted-foreground">Klart idag. Extra pass påverkar inte streak.</p>}
           <ul className="mt-3 space-y-1.5">
-            {daily.map((e, i) => (
-              <li key={e.id} className="flex items-center gap-3 text-sm">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary-foreground/80">{i + 1}</span>
-                <span className="truncate">{e.name}</span>
-                <span className="ml-auto whitespace-nowrap text-xs text-muted-foreground">{exerciseDose(e, state.intensity)}</span>
+            {daily.map((exercise, index) => (
+              <li key={exercise.id} className="flex items-center gap-3 text-sm">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary-foreground/80">{index + 1}</span>
+                <span className="truncate">{exercise.name}</span>
+                <span className="ml-auto whitespace-nowrap text-xs text-muted-foreground">{exerciseDose(exercise, state.intensity)}</span>
               </li>
             ))}
           </ul>
@@ -197,9 +197,7 @@ export function HomePage() {
             <p className="text-xs text-muted-foreground">Mån–sön</p>
           </div>
           <div className="mt-3 flex gap-1.5">
-            {Array.from({ length: goal }).map((_, i) => (
-              <div key={i} className={`h-2 flex-1 rounded-full ${i < week ? "bg-primary" : "bg-muted"}`} />
-            ))}
+            {Array.from({ length: goal }).map((_, index) => <div key={index} className={`h-2 flex-1 rounded-full ${index < week ? "bg-primary" : "bg-muted"}`} />)}
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <Link to="/stats" className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99]">
@@ -213,9 +211,7 @@ export function HomePage() {
 
         <section className="mt-4 rounded-2xl bg-card p-5 ring-1 ring-border/60">
           <p className="text-sm font-medium">Appen är anpassad</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Nivå {intensityLabel(state.intensity).toLowerCase()}. Påminnelse {state.reminder.enabled ? `på ${state.reminder.time}` : "av"}. {favorites} favoriter och {hidden} dolda övningar.
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Nivå {intensityLabel(state.intensity).toLowerCase()}. Påminnelse {state.reminder.enabled ? `på ${state.reminder.time}` : "av"}. {favorites} favoriter och {hidden} dolda övningar.</p>
           <Link to="/account" className="mt-4 flex h-10 items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99]">
             <User className="h-4 w-4" /> Konto
           </Link>
