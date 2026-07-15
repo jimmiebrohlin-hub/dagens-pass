@@ -125,9 +125,17 @@ function takeForGroup(seed: string, group: MuscleGroup, picked: Exercise[], opti
   const preferred = takeSeeded(groupPool, `${seed}:${picked.length}:${group}`, pickedIds, options);
   if (preferred && preferred.muscleGroup !== previousGroup) return preferred;
 
+  if (group !== previousGroup) {
+    const repeatedPreferred = takeSeeded(groupPool, `${seed}:${picked.length}:${group}:repeat`, [], options);
+    if (repeatedPreferred) return repeatedPreferred;
+  }
+
   const alternatingPool = allowed.filter((item) => item.muscleGroup !== previousGroup);
   const alternating = takeSeeded(alternatingPool, `${seed}:${picked.length}:alternate`, pickedIds, options);
   if (alternating) return alternating;
+
+  const repeatedAlternating = takeSeeded(alternatingPool, `${seed}:${picked.length}:repeat-alternate`, [], options);
+  if (repeatedAlternating) return repeatedAlternating;
 
   return preferred ?? takeSeeded(allowed, `${seed}:${picked.length}:any`, pickedIds, options) ?? takeSeeded(allowed, `${seed}:${picked.length}:repeat`, [], options);
 }
@@ -151,8 +159,8 @@ export function pickSmall(seed: string, options: PickOptions = {}, focus: Workou
   return pickProgram(seed, 10, focus, options);
 }
 
-export function pickLarge(seed: string, options: PickOptions = {}): Exercise[] {
-  return pickProgram(seed, 20, "mix", options);
+export function pickLarge(seed: string, options: PickOptions = {}, focus: WorkoutFocus = "mix"): Exercise[] {
+  return pickProgram(seed, 20, focus, options);
 }
 
 export function pickHalf(seed: string, options: PickOptions = {}, focus: WorkoutFocus = "mix"): Exercise[] {
