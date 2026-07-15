@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, SkipForward, Info } from "lucide-react";
+import { ArrowLeft, Check, Info, SkipForward } from "lucide-react";
+import { ExerciseIllustration } from "@/components/ExerciseIllustration";
 import {
   WORKOUT_FOCUS_OPTIONS,
   applyIntensity,
@@ -24,28 +25,6 @@ type PendingAction = "next-set" | "next-exercise";
 
 const REST_SECONDS = 45;
 const VALID_FOCUS: WorkoutFocus[] = ["mix", "lower", "upper", "core", "gentle"];
-const EXERCISE_IMAGES: Record<string, string> = {
-  armhavningar: "/exercises/armhavningar.png",
-  bankdips: "/exercises/bankdips.png",
-  benlyft: "/exercises/benlyft.png",
-  bird_dog: "/exercises/bird_dog.png",
-  dead_bug: "/exercises/dead_bug.png",
-  hollow_hold: "/exercises/hollow_hold.png",
-  hoftlyft: "/exercises/hoftlyft.png",
-  jagarvila: "/exercises/jagarvila.png",
-  knaboj: "/exercises/knaboj.png",
-  mountain_climbers: "/exercises/mountain_climbers.png",
-  planka: "/exercises/planka.png",
-  russian_twist: "/exercises/russian_twist.png",
-  rygglyft: "/exercises/rygglyft.png",
-  sidoplanka: "/exercises/sidoplanka.png",
-  situps: "/exercises/situps.png",
-  spindelplanka: "/exercises/spindelplanka.png",
-  stepup: "/exercises/stepup.png",
-  tahavningar: "/exercises/tahavningar.png",
-  utfall: "/exercises/utfall.png",
-  vadpress: "/exercises/vadpress.png",
-};
 
 function parseFocus(value: unknown): WorkoutFocus | undefined {
   return typeof value === "string" && VALID_FOCUS.includes(value as WorkoutFocus) ? (value as WorkoutFocus) : undefined;
@@ -68,17 +47,14 @@ function WorkoutPage() {
   const needsFocusChoice = mode === "halvt" && !focus;
   const activeFocus = focus ?? "mix";
 
-  const exercises = useMemo<Exercise[]>(
-    () => {
-      if (needsFocusChoice) return [];
-      if (mode === "stort") return pickLarge(today + "l", state.preferences);
-      if (mode === "halvt") return pickSmall(today + "s", state.preferences, activeFocus);
-      return pickDailyThree(today, state.preferences);
-    },
-    [activeFocus, mode, needsFocusChoice, state.preferences, today],
-  );
-  const exerciseKey = exercises.map((exercise) => exercise.id).join("|");
+  const exercises = useMemo<Exercise[]>(() => {
+    if (needsFocusChoice) return [];
+    if (mode === "stort") return pickLarge(`${today}:large`, state.preferences);
+    if (mode === "halvt") return pickSmall(`${today}:small`, state.preferences, activeFocus);
+    return pickDailyThree(today, state.preferences);
+  }, [activeFocus, mode, needsFocusChoice, state.preferences, today]);
 
+  const exerciseKey = exercises.map((exercise) => exercise.id).join("|");
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const [setNumberIndex, setSetNumberIndex] = useState(0);
   const [done, setDone] = useState<boolean[]>(() => exercises.map(() => false));
@@ -107,19 +83,17 @@ function WorkoutPage() {
   const title = mode === "stort" ? "Stort blandpass" : mode === "halvt" ? "Litet blandpass" : "Dagens 3";
   const titleDetail = mode === "halvt" ? `${title} · ${workoutFocusLabel(activeFocus)}` : title;
   const dailyDoneToday = mode === "dagens3" && state.sessions.some((session) => session.date === today && session.mode === "dagens3");
-  const nextPreview = exercises[exerciseIndex + 1];
+  const progressPercent = exercises.length > 0 ? Math.min(100, (exerciseIndex / exercises.length) * 100) : 0;
 
   const nextExercise = pendingAction === "next-exercise" ? exercises[exerciseIndex + 1] : current;
-  const nextExerciseAdjusted = nextExercise ? applyIntensity(nextExercise, state.intensity) : undefined;
+  const nextAdjusted = nextExercise ? applyIntensity(nextExercise, state.intensity) : undefined;
   const nextSetNumber = pendingAction === "next-set" ? currentSet + 1 : 1;
-  const nextTotalSets = pendingAction === "next-set" ? totalSets : nextExerciseAdjusted?.sets ?? 1;
-  const nextLabel = nextExercise ? `${nextExercise.name} · Set ${nextSetNumber} av ${nextTotalSets}` : "Passet klart";
+  const nextTotalSets = pendingAction === "next-set" ? totalSets : nextAdjusted?.sets ?? 1;
+  const nextLabel = nextExercise ? `${nextExercise.name} · set ${nextSetNumber} av ${nextTotalSets}` : "Passet är klart";
 
   useEffect(() => {
     if (phase !== "rest" || restSeconds <= 0) return;
-    const timer = window.setInterval(() => {
-      setRestSeconds((seconds) => Math.max(0, seconds - 1));
-    }, 1000);
+    const timer = window.setInterval(() => setRestSeconds((seconds) => Math.max(0, seconds - 1)), 1000);
     return () => window.clearInterval(timer);
   }, [phase, restSeconds]);
 
@@ -136,7 +110,7 @@ function WorkoutPage() {
 
     setPendingAction(null);
     setPhase("exercise");
-  }, [phase, restSeconds, pendingAction, state.sound]);
+  }, [pendingAction, phase, restSeconds, state.sound]);
 
   function markDone(index: number, completed: boolean) {
     setDone((items) => {
@@ -151,10 +125,6 @@ function WorkoutPage() {
     setPhase("rest");
     void unlockTimerSound();
     setRestSeconds(restDuration);
-  }
-
-  function skipRest() {
-    setRestSeconds(0);
   }
 
   function completeSet() {
@@ -188,16 +158,17 @@ function WorkoutPage() {
   async function finish() {
     if (saving) return;
     setSaving(true);
-    setState((s) =>
-      addSession(s, {
+    setState((currentState) =>
+      addSession(currentState, {
         mode,
-        exercises: exercises.map((exercise, i) => ({
+        exercises: exercises.map((exercise, index) => ({
           id: exercise.id,
           name: exercise.name,
-          status: done[i] ? "done" : "skipped",
+          status: done[index] ? "done" : "skipped",
         })),
       }),
     );
+
     if (mode === "dagens3" && !dailyDoneToday) {
       try {
         await completeSharedDaily3Turns();
@@ -205,6 +176,7 @@ function WorkoutPage() {
         console.error("[workout] completeSharedDaily3Turns failed", error);
       }
     }
+
     navigate({ to: "/" });
   }
 
@@ -212,23 +184,20 @@ function WorkoutPage() {
     return (
       <div className="min-h-screen bg-background text-foreground">
         <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-8 pt-6">
-          <header className="mb-5 rounded-3xl bg-card px-4 py-4 ring-1 ring-border/60">
-            <div className="flex items-center justify-between gap-3">
-              <Link to="/" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-              <div className="min-w-0 flex-1 text-center">
-                <p className="text-lg font-semibold tracking-tight">Litet blandpass</p>
-                <p className="text-xs text-muted-foreground">Välj fokus · {intensityLabel(state.intensity)}</p>
-              </div>
-              <div className="w-10" />
+          <header className="mb-5 flex items-center gap-3">
+            <Link to="/" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            <div>
+              <p className="text-lg font-semibold tracking-tight">Litet blandpass</p>
+              <p className="text-xs text-muted-foreground">Välj fokus · {intensityLabel(state.intensity)}</p>
             </div>
           </header>
 
           <section className="rounded-[2rem] bg-card p-5 ring-1 ring-border/60">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Vad vill du träna idag?</p>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight">Välj typ av pass</h1>
-            <p className="mt-2 text-sm text-muted-foreground">Appen varvar övningarna så att samma muskelgrupp inte kommer direkt efter varandra när det går.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Appen varvar muskelgrupper när det går.</p>
             <div className="mt-5 grid gap-2">
               {WORKOUT_FOCUS_OPTIONS.map((option) => (
                 <Link
@@ -250,134 +219,106 @@ function WorkoutPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-8 pt-6">
-        <header className="mb-5 rounded-3xl bg-card px-4 py-4 ring-1 ring-border/60">
-          <div className="flex items-center justify-between gap-3">
+      <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-8 pt-5">
+        <header className="mb-4">
+          <div className="flex items-center gap-3">
             <Link to="/" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary">
               <ArrowLeft className="h-4 w-4" />
             </Link>
-            <div className="min-w-0 flex-1 text-center">
-              <p className="text-lg font-semibold tracking-tight">{APP_NAME}</p>
-              <p className="text-xs text-muted-foreground">{titleDetail} · {intensityLabel(state.intensity)}</p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-base font-semibold tracking-tight">{titleDetail}</p>
+              <p className="text-xs text-muted-foreground">
+                {finished ? "Passet klart" : `Övning ${Math.min(exerciseIndex + 1, exercises.length)} av ${exercises.length}`} · {intensityLabel(state.intensity)}
+              </p>
             </div>
-            <div className="w-10" />
           </div>
-
-          {!finished && current && (
-            <section className="mt-4 rounded-2xl bg-secondary/45 p-3">
-              <div className="flex items-center justify-center gap-1.5">
-                {exercises.map((exercise, index) => (
-                  <span
-                    key={`${exercise.id}-${index}`}
-                    className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold ${
-                      done[index] ? "bg-primary text-primary-foreground" : index === exerciseIndex ? "bg-primary/20 text-primary ring-2 ring-primary/25" : "bg-muted text-muted-foreground"
-                    }`}
-                    aria-label={`${index + 1}. ${exercise.name}`}
-                  >
-                    {done[index] ? "✓" : index === exerciseIndex ? "•" : ""}
-                  </span>
-                ))}
-              </div>
-              <div className="mt-3 flex items-center gap-3">
-                <div className="min-w-0 flex-1 text-center">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Nu</p>
-                  <p className="mt-0.5 truncate text-2xl font-semibold tracking-tight text-primary">{current.name}</p>
-                  <p className="mt-1 truncate text-sm text-muted-foreground">{nextPreview ? `Nästa: ${nextPreview.name}` : "Sista övningen"}</p>
-                </div>
-                {phase === "exercise" ? (
-                  <button onClick={skipExercise} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground active:scale-[0.98]" aria-label="Hoppa över övningen">
-                    <SkipForward className="h-5 w-5" />
-                  </button>
-                ) : (
-                  <div className="h-10 w-10 shrink-0" />
-                )}
-              </div>
-            </section>
-          )}
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${finished ? 100 : progressPercent}%` }} />
+          </div>
         </header>
 
         {dailyDoneToday && !finished && (
           <p className="mb-4 rounded-2xl bg-secondary/60 p-3 text-sm text-muted-foreground">
-            Dagens 3 är redan klart idag. Det här sparas som extra pass och påverkar inte streak.
+            Extra pass: detta påverkar inte streaken.
           </p>
         )}
 
-        {!finished && current ? (
+        {!finished && current && phase === "exercise" && (
           <main className="flex flex-1 flex-col">
-            <section className="rounded-[2rem] bg-card p-5 ring-1 ring-border/60">
-              <div className="grid grid-cols-[1fr_112px] gap-4">
-                <div>
-                  <p className="inline-flex rounded-2xl bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Gör nu</p>
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <p className="text-lg font-medium text-muted-foreground">Set {currentSet} av {totalSets}</p>
-                    {phase === "rest" ? (
-                      <button onClick={skipRest} className="relative flex h-10 min-w-24 items-center justify-center overflow-hidden rounded-2xl bg-secondary px-4 text-sm font-semibold text-secondary-foreground ring-2 ring-primary/20 active:scale-[0.99]" aria-label="Avsluta vilan och gå vidare">
-                        <span className="absolute inset-y-0 left-0 rounded-2xl bg-primary/25 transition-[width] duration-300 ease-linear" style={{ width: `${restProgressPct}%` }} />
-                        <span className="relative z-10">{restSeconds} sek</span>
-                      </button>
-                    ) : (
-                      <button onClick={completeSet} className="flex h-10 items-center justify-center gap-1.5 rounded-2xl bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm active:scale-[0.99]">
-                        <Check className="h-4 w-4" /> Klar
-                      </button>
-                    )}
-                  </div>
-                  <div className="mt-3 rounded-[1.25rem] bg-secondary/60 px-4 py-5">
-                    <p className="text-5xl font-semibold leading-none tracking-tight">{exerciseSetDose(current, state.intensity)}</p>
-                  </div>
-                  {phase === "rest" ? (
-                    <p className="mt-3 text-xs font-medium text-primary">Tryck på timern för att gå vidare. Nästa: {nextLabel}</p>
-                  ) : (
-                    <p className="mt-3 text-xs font-medium text-primary">Efter Klar: vila {restDuration} sek</p>
-                  )}
-                </div>
-                <div className="flex flex-col gap-3">
-                  <Link to="/exercise/$exerciseId" params={{ exerciseId: current.id }} className="ml-auto flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-secondary-foreground active:scale-[0.98]" aria-label="Visa övningsdetaljer">
-                    <Info className="h-5 w-5" />
-                  </Link>
-                  <div className="flex flex-1 items-center justify-center overflow-hidden rounded-[1.5rem] bg-secondary/45 p-1 ring-1 ring-border/40">
-                    <ExerciseIllustration exercise={current} />
-                  </div>
-                </div>
+            <section className="flex flex-1 flex-col rounded-[2rem] bg-card p-5 ring-1 ring-border/60">
+              <div className="text-center">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Gör nu</p>
+                <h1 className="mt-2 text-3xl font-semibold tracking-tight">{current.name}</h1>
+                <p className="mt-2 text-5xl font-semibold leading-none tracking-tight">{exerciseSetDose(current, state.intensity)}</p>
+                <p className="mt-2 text-sm text-muted-foreground">Set {currentSet} av {totalSets}</p>
               </div>
 
-              <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">{current.instruction}</p>
+              <div className="mt-5 flex min-h-56 flex-1 items-center justify-center overflow-hidden rounded-[1.75rem] bg-secondary/45 p-4 ring-1 ring-border/40">
+                <ExerciseIllustration exercise={current} />
+              </div>
+
+              <p className="mt-5 text-[15px] leading-relaxed text-muted-foreground">{current.instruction}</p>
+              <Link
+                to="/exercise/$exerciseId"
+                params={{ exerciseId: current.id }}
+                className="mt-3 inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground"
+              >
+                <Info className="h-4 w-4" /> Teknik & alternativ
+              </Link>
+
+              <button onClick={completeSet} className="mt-5 flex min-h-16 w-full items-center justify-center gap-3 rounded-2xl bg-primary px-4 text-primary-foreground shadow-sm active:scale-[0.99]">
+                <Check className="h-5 w-5" />
+                <span className="text-left">
+                  <span className="block text-lg font-semibold">Klar</span>
+                  <span className="block text-xs opacity-80">Vila {restDuration} sek efteråt</span>
+                </span>
+              </button>
+
+              <button onClick={skipExercise} className="mt-3 inline-flex h-10 items-center justify-center gap-2 text-sm text-muted-foreground">
+                <SkipForward className="h-4 w-4" /> Hoppa över övningen
+              </button>
             </section>
           </main>
-        ) : (
-          <div className="mt-10 rounded-3xl bg-card p-8 text-center ring-1 ring-border/60">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/20">
-              <Check className="h-6 w-6 text-primary-foreground/80" />
+        )}
+
+        {!finished && current && phase === "rest" && (
+          <main className="flex flex-1 flex-col">
+            <section className="flex flex-1 flex-col items-center justify-center rounded-[2rem] bg-card p-6 text-center ring-1 ring-primary/25">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Vila</p>
+              <p className="mt-5 text-8xl font-semibold leading-none tracking-tight">{restSeconds}</p>
+              <p className="mt-2 text-sm text-muted-foreground">sekunder</p>
+
+              <div className="mt-6 h-3 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary transition-[width] duration-300 ease-linear" style={{ width: `${restProgressPct}%` }} />
+              </div>
+
+              <div className="mt-8 w-full rounded-2xl bg-secondary/60 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Nästa</p>
+                <p className="mt-1 text-xl font-semibold">{nextLabel}</p>
+              </div>
+
+              <button onClick={() => setRestSeconds(0)} className="mt-6 h-12 w-full rounded-2xl bg-secondary text-sm font-medium text-secondary-foreground active:scale-[0.99]">
+                Hoppa över vilan
+              </button>
+            </section>
+          </main>
+        )}
+
+        {finished && (
+          <div className="mt-8 rounded-3xl bg-card p-8 text-center ring-1 ring-primary/25">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/20">
+              <Check className="h-7 w-7 text-primary" />
             </div>
-            <h2 className="mt-4 text-2xl font-semibold tracking-tight">Bra jobbat</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {dailyDoneToday ? "Extra passet sparas. Streak påverkas inte." : "Passet är klart. Min streak och aktuella streaks uppdateras."}
+            <h2 className="mt-5 text-3xl font-semibold tracking-tight">Bra jobbat!</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {dailyDoneToday ? "Extra passet sparas utan att påverka streaken." : mode === "dagens3" ? "Dagens 3 är klart. Din streak uppdateras när du sparar." : "Passet är klart och redo att sparas."}
             </p>
-            <button disabled={saving} onClick={finish} className="mt-6 h-12 w-full rounded-2xl bg-primary text-base font-medium text-primary-foreground disabled:opacity-60">
-              {saving ? "Sparar..." : "Spara & avsluta"}
+            <button disabled={saving} onClick={finish} className="mt-6 h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground disabled:opacity-60">
+              {saving ? "Sparar..." : "Spara & gå hem"}
             </button>
           </div>
         )}
       </div>
     </div>
-  );
-}
-
-function ExerciseIllustration({ exercise }: { exercise: Exercise }) {
-  const imageSrc = EXERCISE_IMAGES[exercise.id];
-
-  if (imageSrc) {
-    return <img src={imageSrc} alt={exercise.name} className="h-full w-full rounded-[1.25rem] object-contain" loading="lazy" />;
-  }
-
-  return (
-    <svg viewBox="0 0 120 120" className="h-24 w-24 text-primary/85" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="60" cy="22" r="10" />
-      <path d="M60 32L60 58" />
-      <path d="M60 40L40 50" />
-      <path d="M60 40L80 50" />
-      <path d="M60 58L44 88" />
-      <path d="M60 58L78 88" />
-      <path d="M34 92H86" strokeWidth="3" />
-    </svg>
   );
 }
