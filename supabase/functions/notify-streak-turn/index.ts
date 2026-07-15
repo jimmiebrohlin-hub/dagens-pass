@@ -96,6 +96,19 @@ Deno.serve(async (req) => {
     return json({ error: "not_a_streak_member" }, 403);
   }
 
+  const { data: notificationPreference, error: preferenceError } = await admin
+    .from("user_notification_preferences")
+    .select("streak_email_enabled")
+    .eq("user_id", toUserId)
+    .maybeSingle();
+
+  if (preferenceError && preferenceError.code !== "42P01" && preferenceError.code !== "PGRST205") {
+    return json({ error: "notification_preference_lookup_failed", details: preferenceError.message }, 500);
+  }
+  if (notificationPreference?.streak_email_enabled === false) {
+    return json({ skipped: true, reason: "recipient_disabled_streak_email" });
+  }
+
   const { data: prior } = await admin
     .from("streak_turn_email_notifications")
     .select("id")
