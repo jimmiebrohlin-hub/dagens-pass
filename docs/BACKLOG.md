@@ -6,16 +6,14 @@
 |---:|---|---|:---:|---|
 | 1 | Streak-mejl | Byt till ett nytt app-lösenord innan produktionssättning | XS | Säkerhetssteg före drift |
 | 2 | Streak-mejl | Lägg in Lovable/Supabase-secrets för Gmail SMTP och app-URL | S | Väntar på Lovable-credits 1 aug |
-| 3 | Streak-mejl | Deploya `notify-streak-turn` Edge Function med Gmail SMTP-versionen | S | Väntar på Lovable-credits 1 aug |
-| 4 | Streak-mejl | Verifiera att migrationen för `streak_turn_email_notifications` är körd | XS | Väntar på Lovable-credits 1 aug |
-| 5 | Streak-mejl | End-to-end-test med två Google-konton: exakt ett mejl per bollöverlämning | M | Efter deploy/secrets |
+| 3 | Streak-mejl | Kör migrationerna för mejlaudit och `user_notification_preferences` | XS | Väntar på Lovable-credits 1 aug |
+| 4 | Streak-mejl | Deploya `notify-streak-turn` Edge Function med Gmail SMTP-versionen | S | Väntar på Lovable-credits 1 aug |
+| 5 | Streak-mejl | End-to-end-test med två Google-konton: exakt ett mejl per bollöverlämning samt av/på-inställning | M | Efter deploy/secrets |
 | 6 | Streak-mejl | Kontrollera att Gmail SMTP fungerar från Supabase Edge Functions; byt annars till Gmail API över HTTPS | M | Teknisk risk efter deploy |
-| 7 | Streak-mejl | Lägg till användarinställning för att slå av/på mejlnotiser | M | Efter fungerande basflöde |
-| 8 | Streak | Visa kvarvarande tid av 36 timmar tydligare i UI | M | Ej startad |
-| 9 | Träning | Lägg fokusval även på Stort blandpass | S | Ej startad |
-| 10 | Träning | Lägg bilder till nya överkroppsövningar | M | Ej startad |
-| 11 | Kvalitet | Lägg automatiska tester för programurval och muskelgruppsalternering | M | Ej startad |
-| 12 | Kvalitet | Lägg integrationstest för streak-RPC och mejldubblettskydd | L | Ej startad |
+| 7 | Träning | Lägg fokusval även på Stort blandpass | S | Ej startad |
+| 8 | Kvalitet | Lägg automatiska tester för programurval och muskelgruppsalternering | M | Ej startad |
+| 9 | Kvalitet | Lägg integrationstest för streak-RPC, 36h-logik och mejldubblettskydd | L | Ej startad |
+| 10 | UX | Utvärdera Coach Mode på mobil och finjustera bildhöjd/knappplacering efter test | S | Efter build av 0.7.63 |
 
 ## Klart
 
@@ -26,6 +24,10 @@
 | Streak-mejl | Google App Password har skapats som tekniskt test |
 | Streak-mejl | Gmail SMTP-versionen av `notify-streak-turn` är förberedd i repot |
 | Streak-mejl | Audit-/dubblettskydd för mejl är förberett i migration |
+| Streak-mejl | Användarinställning för att slå av/på streakmejl är implementerad och Edge Function respekterar den |
+| Streak | 36h kvar, sluttid och varningsnivå visas på startsidan och streaksidan |
+| Träning | Coach Mode med en tydlig träningsvy och separat vilovy är implementerat |
+| Träning | Enhetliga textfria illustrationer är tillagda för nya övningar |
 
 ## Konfiguration som ska läggas in 1 augusti
 
@@ -40,4 +42,4 @@ Använd aldrig det vanliga Gmail-lösenordet. `SMTP_PASSWORD` ska vara ett separ
 
 ## Billig Lovable-prompt för 1 augusti
 
-> Slutför Gmail-mejl för streak i `jimmiebrohlin-hub/dagens-pass` utan andra ändringar. Kör migrationen för `streak_turn_email_notifications`, deploya `supabase/functions/notify-streak-turn/index.ts`, och lägg in secrets som användaren lämnar: `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM`, `APP_URL`. Verifiera JWT. Testa med två Google-konton att första Dagens 3 flyttar bollen och skickar exakt ett mejl till mottagaren; extra Dagens 3, Min streak och öppna inbjudningar ska inte skicka mejl. Rör inte övrig tränings- eller streaklogik. Om utgående SMTP blockeras från Edge Function, byt endast transporten till Gmail API över HTTPS och behåll samma validering, audit och dubblettskydd.
+> Slutför Gmail-mejl för streak i `jimmiebrohlin-hub/dagens-pass` utan andra ändringar. Kör migrationerna för `streak_turn_email_notifications` och `20260715161000_user_notification_preferences.sql`, deploya `supabase/functions/notify-streak-turn/index.ts`, och lägg in secrets som användaren lämnar: `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM`, `APP_URL`. Verifiera JWT. Testa med två Google-konton att första Dagens 3 flyttar bollen och skickar exakt ett mejl till mottagaren; extra Dagens 3, Min streak och öppna inbjudningar ska inte skicka mejl. Kontrollera även att mottagaren kan slå av mejlet på Kontosidan och då inte får något mejl. Rör inte övrig tränings- eller streaklogik. Om utgående SMTP blockeras från Edge Function, byt endast transporten till Gmail API över HTTPS och behåll samma validering, inställning, audit och dubblettskydd.
