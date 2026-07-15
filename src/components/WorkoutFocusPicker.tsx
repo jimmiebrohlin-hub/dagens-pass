@@ -37,7 +37,7 @@ export function WorkoutFocusPicker({ mode, intensity }: WorkoutFocusPickerProps)
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
             Vad vill du träna idag?
           </p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">Välj typ av pass</h1>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight">Välj fokus</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {exerciseCount} övningar. Appen varvar muskelgrupper när det går.
           </p>

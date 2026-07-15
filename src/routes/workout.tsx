@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, Info, SkipForward } from "lucide-react";
+import { ArrowLeft, Check, Info } from "lucide-react";
 import { ExerciseIllustration } from "@/components/ExerciseIllustration";
+import { WorkoutActionBar } from "@/components/WorkoutActionBar";
 import { WorkoutFocusPicker } from "@/components/WorkoutFocusPicker";
 import {
   applyIntensity,
@@ -17,11 +18,10 @@ import {
 import { playTimerDoneCue, unlockTimerSound } from "@/lib/sound";
 import { todayISO, useAppState, addSession } from "@/lib/storage";
 import { completeSharedDaily3Turns } from "@/lib/sharedStreaks";
+import { clearWorkoutDraft, createWorkoutDraftKey, loadWorkoutDraft, saveWorkoutDraft, type WorkoutCoachPhase, type WorkoutPendingAction } from "@/lib/workoutDraft";
 import { APP_NAME } from "@/lib/version";
 
 type Mode = "dagens3" | "halvt" | "stort";
-type CoachPhase = "exercise" | "rest";
-type PendingAction = "next-set" | "next-exercise";
 
 const REST_SECONDS = 45;
 const VALID_FOCUS: WorkoutFocus[] = ["mix", "lower", "upper", "core", "gentle"];
@@ -55,23 +55,58 @@ function WorkoutPage() {
   }, [activeFocus, mode, needsFocusChoice, state.preferences, today]);
 
   const exerciseKey = exercises.map((exercise) => exercise.id).join("|");
+  const draftKey = useMemo(
+    () =>
+      createWorkoutDraftKey({
+        date: today,
+        mode,
+        focus: activeFocus,
+        intensity: state.intensity,
+        exerciseIds: exercises.map((exercise) => exercise.id),
+      }),
+    [activeFocus, exercises, mode, state.intensity, today],
+  );
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const [setNumberIndex, setSetNumberIndex] = useState(0);
   const [done, setDone] = useState<boolean[]>(() => exercises.map(() => false));
-  const [phase, setPhase] = useState<CoachPhase>("exercise");
+  const [phase, setPhase] = useState<WorkoutCoachPhase>("exercise");
   const [restSeconds, setRestSeconds] = useState(0);
-  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [pendingAction, setPendingAction] = useState<WorkoutPendingAction | null>(null);
   const [saving, setSaving] = useState(false);
+  const [readyDraftKey, setReadyDraftKey] = useState<string | null>(null);
 
   useEffect(() => {
-    setExerciseIndex(0);
-    setSetNumberIndex(0);
-    setDone(exercises.map(() => false));
-    setPhase("exercise");
-    setRestSeconds(0);
-    setPendingAction(null);
+    if (needsFocusChoice || exercises.length === 0) {
+      setReadyDraftKey(null);
+      return;
+    }
+    const draft = loadWorkoutDraft(draftKey, exercises.length);
+    setExerciseIndex(draft?.exerciseIndex ?? 0);
+    setSetNumberIndex(draft?.setNumberIndex ?? 0);
+    setDone(draft?.done ?? exercises.map(() => false));
+    setPhase(draft?.phase ?? "exercise");
+    setRestSeconds(draft?.restSeconds ?? 0);
+    setPendingAction(draft?.pendingAction ?? null);
     setSaving(false);
-  }, [exerciseKey]);
+    setReadyDraftKey(draftKey);
+  }, [draftKey, exerciseKey, exercises, needsFocusChoice]);
+
+  useEffect(() => {
+    if (readyDraftKey !== draftKey || needsFocusChoice || exercises.length === 0) return;
+    saveWorkoutDraft(draftKey, {
+      exerciseIndex,
+      setNumberIndex,
+      done,
+      phase,
+      restSeconds,
+      pendingAction,
+    });
+  }, [done, draftKey, exerciseIndex, exercises.length, needsFocusChoice, pendingAction, phase, readyDraftKey, restSeconds, setNumberIndex]);
+
+  useEffect(() => {
+    if (readyDraftKey !== draftKey || needsFocusChoice) return;
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [draftKey, exerciseIndex, needsFocusChoice, phase, readyDraftKey, setNumberIndex]);
 
   const restDuration = state.restSeconds ?? REST_SECONDS;
   const restProgressPct = restDuration > 0 ? Math.max(0, Math.min(100, ((restDuration - restSeconds) / restDuration) * 100)) : 0;
@@ -120,7 +155,7 @@ function WorkoutPage() {
     });
   }
 
-  function beginRest(action: PendingAction) {
+  function beginRest(action: WorkoutPendingAction) {
     setPendingAction(action);
     setPhase("rest");
     void unlockTimerSound();
@@ -177,6 +212,7 @@ function WorkoutPage() {
       }
     }
 
+    clearWorkoutDraft(draftKey);
     navigate({ to: "/" });
   }
 
@@ -186,7 +222,7 @@ function WorkoutPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-8 pt-5">
+      <div className={`mx-auto flex min-h-screen max-w-md flex-col px-5 pt-5 ${!finished && phase === "exercise" ? "pb-36" : "pb-8"}`}>
         <header className="mb-4">
           <div className="flex items-center gap-3">
             <Link to="/" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary">
@@ -220,7 +256,7 @@ function WorkoutPage() {
                 <p className="mt-2 text-sm text-muted-foreground">Set {currentSet} av {totalSets}</p>
               </div>
 
-              <div className="mt-5 flex min-h-56 flex-1 items-center justify-center overflow-hidden rounded-[1.75rem] bg-secondary/45 p-4 ring-1 ring-border/40">
+              <div className="mt-5 flex h-[clamp(9rem,24vh,12rem)] shrink-0 items-center justify-center overflow-hidden rounded-[1.75rem] bg-secondary/45 p-4 ring-1 ring-border/40">
                 <ExerciseIllustration exercise={current} />
               </div>
 
@@ -232,19 +268,8 @@ function WorkoutPage() {
               >
                 <Info className="h-4 w-4" /> Teknik & alternativ
               </Link>
-
-              <button onClick={completeSet} className="mt-5 flex min-h-16 w-full items-center justify-center gap-3 rounded-2xl bg-primary px-4 text-primary-foreground shadow-sm active:scale-[0.99]">
-                <Check className="h-5 w-5" />
-                <span className="text-left">
-                  <span className="block text-lg font-semibold">Klar</span>
-                  <span className="block text-xs opacity-80">Vila {restDuration} sek efteråt</span>
-                </span>
-              </button>
-
-              <button onClick={skipExercise} className="mt-3 inline-flex h-10 items-center justify-center gap-2 text-sm text-muted-foreground">
-                <SkipForward className="h-4 w-4" /> Hoppa över övningen
-              </button>
             </section>
+            <WorkoutActionBar restDuration={restDuration} onComplete={completeSet} onSkip={skipExercise} />
           </main>
         )}
 

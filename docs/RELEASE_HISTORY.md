@@ -1,7 +1,7 @@
 # RELEASE_HISTORY – Vardagsstyrka
 
-Dokumentversion: 2
-Senast uppdaterad: 2026-06-21
+Dokumentversion: 3
+Senast uppdaterad: 2026-07-15
 
 Denna fil används för att dokumentera större förändringar över tid.
 
@@ -39,6 +39,8 @@ Typ: Fortsatt utveckling
 
 | Version | Typ | Sammanfattning |
 |---|---|---|
+| 0.7.66 | Stabilitet/UX | Korrekt 100 challenge-progression, återställning av aktiva pass, fast Klar-rad och videobaserad UX-polering. |
+| 0.7.65 | Träning | Gemensamt fokusval för både litet och stort blandpass. |
 | Tidig grund | Projektstart | Repository, kodbas, backlog och dokumentationsstruktur. |
 | Kommande | Funktioner | Fylls på efter större implementationer. |
 

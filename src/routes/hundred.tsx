@@ -4,12 +4,10 @@ import { ArrowLeft, Check, Info, RotateCcw, Volume2, VolumeX } from "lucide-reac
 import { EXERCISES, getExercise, type Exercise } from "@/lib/exercises";
 import { playTimerDoneCue, unlockTimerSound } from "@/lib/sound";
 import { useAppState, addSession, updateActiveHundredId, updateSound, type HundredFeedback } from "@/lib/storage";
+import { HUNDRED_GOAL, HUNDRED_START_REPS, challengePlan, createChallengeAttempt, createChallengeResult, feedbackHint, planTotal, type ChallengeAttempt, type ChallengeResult } from "@/lib/hundredChallenge";
+import { clearHundredDraft, loadHundredDraft, saveHundredDraft } from "@/lib/hundredDraft";
 import { APP_NAME } from "@/lib/version";
 
-const GOAL = 100;
-const START_REPS = 8;
-const MIN_REPS = 4;
-const MAX_REPS = 34;
 const DEFAULT_REST_SECONDS = 45;
 const EXERCISE_IMAGES: Record<string, string> = {
   armhavningar: "/exercises/armhavningar.png",
@@ -30,28 +28,6 @@ export const Route = createFileRoute("/hundred")({
 
 type Phase = "pick" | "do" | "rest" | "rate" | "done";
 
-function challengePlan(baseReps: number): [number, number, number] {
-  return [baseReps, Math.min(MAX_REPS, baseReps + 4), Math.max(MIN_REPS, baseReps - 2)];
-}
-
-function planTotal(plan: number[]) {
-  return plan.reduce((sum, reps) => sum + reps, 0);
-}
-
-function nextBaseForFeedback(current: number, level: HundredFeedback) {
-  if (level === "latt") return Math.min(MAX_REPS, current + 2);
-  if (level === "medel") return Math.min(MAX_REPS, current + 1);
-  if (level === "misslyckat") return Math.max(MIN_REPS, current - 2);
-  return current;
-}
-
-function feedbackHint(level: HundredFeedback) {
-  if (level === "latt") return "Nästa gång ökar appen med 2 reps i basnivå.";
-  if (level === "medel") return "Nästa gång ökar appen med 1 rep i basnivå.";
-  if (level === "svart") return "Nästa gång behåller appen samma nivå.";
-  return "Nästa gång sänker appen basnivån med 2 reps.";
-}
-
 function HundredPage() {
   const [state, setState] = useAppState();
   const [phase, setPhase] = useState<Phase>("pick");
@@ -59,26 +35,48 @@ function HundredPage() {
   const [manualPick, setManualPick] = useState(false);
   const [setIndex, setSetIndex] = useState(0);
   const [restSeconds, setRestSeconds] = useState(0);
-  const [lastFeedback, setLastFeedback] = useState<HundredFeedback | null>(null);
-  const [nextBaseReps, setNextBaseReps] = useState<number | null>(null);
+  const [attempt, setAttempt] = useState<ChallengeAttempt | null>(null);
+  const [result, setResult] = useState<ChallengeResult | null>(null);
+  const [draftChecked, setDraftChecked] = useState(false);
 
   const eligible = EXERCISES.filter((e) => e.hundredEligible);
   const savedActive = state.activeHundredId && getExercise(state.activeHundredId)?.hundredEligible ? state.activeHundredId : undefined;
   const active = activeId ? getExercise(activeId) : null;
-  const reps = active ? state.hundred[active.id]?.reps ?? START_REPS : START_REPS;
-  const plan = challengePlan(reps);
-  const total = planTotal(plan);
+  const plan = attempt?.plan ?? challengePlan(HUNDRED_START_REPS);
+  const total = attempt?.total ?? planTotal(plan);
   const restDuration = state.restSeconds ?? DEFAULT_REST_SECONDS;
   const restProgressPct = restDuration > 0 ? Math.max(0, Math.min(100, ((restDuration - restSeconds) / restDuration) * 100)) : 0;
   const currentReps = plan[setIndex] ?? plan[0];
   const nextSet = setIndex + 2;
-  const doneBaseReps = nextBaseReps ?? reps;
-  const donePlan = challengePlan(doneBaseReps);
 
   useEffect(() => {
-    if (manualPick || activeId || phase !== "pick" || !savedActive) return;
-    start(savedActive, false);
-  }, [manualPick, activeId, phase, savedActive]);
+    const draft = loadHundredDraft();
+    if (draft && getExercise(draft.activeId)?.hundredEligible) {
+      setActiveId(draft.activeId);
+      setPhase(draft.phase);
+      setSetIndex(draft.setIndex);
+      setRestSeconds(draft.restSeconds);
+      setAttempt(draft.attempt);
+    }
+    setDraftChecked(true);
+  }, []);
+
+  useEffect(() => {
+    if (!draftChecked || manualPick || activeId || phase !== "pick" || !savedActive) return;
+    const baseReps = state.hundred[savedActive]?.reps ?? HUNDRED_START_REPS;
+    setManualPick(false);
+    setActiveId(savedActive);
+    setSetIndex(0);
+    setRestSeconds(0);
+    setAttempt(createChallengeAttempt(baseReps));
+    setResult(null);
+    setPhase("do");
+  }, [draftChecked, manualPick, activeId, phase, savedActive, state.hundred]);
+
+  useEffect(() => {
+    if (!draftChecked || !activeId || !attempt || (phase !== "do" && phase !== "rest" && phase !== "rate")) return;
+    saveHundredDraft({ activeId, phase, setIndex, restSeconds, attempt });
+  }, [activeId, attempt, draftChecked, phase, restSeconds, setIndex]);
 
   useEffect(() => {
     if (phase !== "rest" || restSeconds <= 0) return;
@@ -95,7 +93,8 @@ function HundredPage() {
     setPhase("do");
   }, [phase, restSeconds, state.sound]);
 
-  function start(id: string, saveAsActive = true) {
+  function start(id: string, saveAsActive = true, baseOverride?: number) {
+    const baseReps = baseOverride ?? state.hundred[id]?.reps ?? HUNDRED_START_REPS;
     if (saveAsActive) {
       setState((s) => updateActiveHundredId(s, id));
     }
@@ -103,17 +102,19 @@ function HundredPage() {
     setActiveId(id);
     setSetIndex(0);
     setRestSeconds(0);
-    setLastFeedback(null);
-    setNextBaseReps(null);
+    setAttempt(createChallengeAttempt(baseReps));
+    setResult(null);
     setPhase("do");
   }
 
   function chooseChallenge() {
+    clearHundredDraft();
     setManualPick(true);
     setActiveId(null);
     setSetIndex(0);
     setRestSeconds(0);
-    setNextBaseReps(null);
+    setAttempt(null);
+    setResult(null);
     setPhase("pick");
   }
 
@@ -136,28 +137,33 @@ function HundredPage() {
   }
 
   function rate(level: HundredFeedback) {
-    if (!active) return;
-    const currentBase = reps;
-    const nextBase = nextBaseForFeedback(currentBase, level);
-    setLastFeedback(level);
-    setNextBaseReps(nextBase);
+    if (!active || !attempt) return;
+    const completedResult = createChallengeResult(attempt, level);
+    setResult(completedResult);
     setState((s) =>
       addSession(
         {
           ...s,
           activeHundredId: active.id,
-          hundred: { ...s.hundred, [active.id]: { reps: nextBase } },
+          hundred: { ...s.hundred, [active.id]: { reps: completedResult.nextBaseReps } },
         },
         {
           mode: "hundred",
-          exercises: [{ id: active.id, name: active.name, status: level === "misslyckat" ? "skipped" : "done" }],
+          exercises: [
+            {
+              id: active.id,
+              name: active.name,
+              status: level === "misslyckat" ? "skipped" : "done",
+            },
+          ],
           feedback: level,
-          totalReps: total,
+          totalReps: attempt.total,
         },
       ),
     );
     setSetIndex(0);
     setRestSeconds(0);
+    clearHundredDraft();
     setPhase("done");
   }
 
@@ -185,10 +191,10 @@ function HundredPage() {
             )}
             <ul className="mt-6 space-y-2">
               {eligible.map((e) => {
-                const r = state.hundred[e.id]?.reps ?? START_REPS;
+                const r = state.hundred[e.id]?.reps ?? HUNDRED_START_REPS;
                 const p = challengePlan(r);
                 const t = planTotal(p);
-                const pct = Math.min(100, Math.round((t / GOAL) * 100));
+                const pct = Math.min(100, Math.round((t / HUNDRED_GOAL) * 100));
                 const isActive = savedActive === e.id;
                 return (
                   <li key={e.id}>
@@ -264,15 +270,17 @@ function HundredPage() {
           </>
         )}
 
-        {phase === "done" && active && (
+        {phase === "done" && active && result && (
           <section className="rounded-3xl bg-card p-7 text-center ring-1 ring-border/60">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/20">
               <Check className="h-6 w-6 text-primary" />
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight">Sparat</h1>
-            <p className="mt-2 text-sm text-muted-foreground">{active.name} · {total} reps · {lastFeedback ? feedbackHint(lastFeedback) : "Progressionen är uppdaterad."}</p>
-            <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm font-medium text-secondary-foreground">Nästa gång: {donePlan.join(" + ")} reps</p>
-            <button onClick={() => start(active.id, false)} className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99]">
+            <p className="mt-2 text-sm text-muted-foreground">
+              {active.name} · {result.attempt.total} reps · {feedbackHint(result.feedback)}
+            </p>
+            <p className="mt-3 rounded-2xl bg-secondary/60 p-3 text-sm font-medium text-secondary-foreground">Nästa gång: {result.nextPlan.join(" + ")} reps</p>
+            <button onClick={() => start(active.id, false, result.nextBaseReps)} className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-medium text-primary-foreground active:scale-[0.99]">
               <RotateCcw className="h-4 w-4" /> Kör igen
             </button>
             <button onClick={chooseChallenge} className="mt-3 h-12 w-full rounded-2xl bg-secondary text-base font-medium text-secondary-foreground active:scale-[0.99]">

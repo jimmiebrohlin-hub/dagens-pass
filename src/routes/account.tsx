@@ -101,6 +101,8 @@ function AccountPage() {
     }
   }
 
+  const emailSwitchOn = emailPreferenceAvailable && emailEnabled;
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-md px-5 pb-16 pt-8">
@@ -168,13 +170,13 @@ function AccountPage() {
                     <button
                       type="button"
                       role="switch"
-                      aria-checked={emailEnabled}
+                      aria-checked={emailSwitchOn}
                       aria-label="Mejlnotiser för streak"
                       disabled={!emailPreferenceAvailable || emailPreferenceLoading}
                       onClick={toggleStreakEmail}
-                      className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-50 ${emailEnabled ? "bg-primary" : "bg-muted"}`}
+                      className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-60 ${emailSwitchOn ? "bg-primary" : "bg-muted"}`}
                     >
-                      <span className={`absolute top-1 h-5 w-5 rounded-full bg-card shadow-sm transition-all ${emailEnabled ? "left-6" : "left-1"}`} />
+                      <span className={`absolute top-1 h-5 w-5 rounded-full bg-card shadow-sm transition-all ${emailSwitchOn ? "left-6" : "left-1"}`} />
                     </button>
                   </div>
                   <p className="mt-3 text-xs text-muted-foreground">Vi skickar bara vid en riktig bollöverlämning. Min streak och extra Dagens 3 skickar inget mejl.</p>

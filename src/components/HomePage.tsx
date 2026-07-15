@@ -108,7 +108,7 @@ export function HomePage() {
           <div className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-sm">
             <Flame className="h-4 w-4 text-primary" />
             <span className="font-medium">{streak}</span>
-            <span className="text-muted-foreground">dagar</span>
+            <span className="text-muted-foreground">{streak === 1 ? "dag" : "dagar"}</span>
           </div>
         </header>
 

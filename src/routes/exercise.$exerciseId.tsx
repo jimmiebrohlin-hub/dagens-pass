@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowDown, ArrowLeft, ArrowUp, Dumbbell, Play } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, Dumbbell } from "lucide-react";
 import { exerciseDose, getExercise, intensityLabel } from "@/lib/exercises";
 import { useAppState, type WorkoutIntensity } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
@@ -114,15 +114,10 @@ function ExerciseDetailPage() {
         </section>
 
         <section className="mt-4 rounded-3xl bg-card p-6 ring-1 ring-border/60">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Så gör du</p>
-              <p className="mt-2 text-4xl font-semibold tracking-tight">{exerciseDose(exercise, state.intensity)}</p>
-              <p className="mt-1 text-sm text-muted-foreground">Nivå: {intensityLabel(state.intensity)}</p>
-            </div>
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/15">
-              <Play className="h-5 w-5 text-primary" />
-            </div>
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Så gör du</p>
+            <p className="mt-2 text-4xl font-semibold tracking-tight">{exerciseDose(exercise, state.intensity)}</p>
+            <p className="mt-1 text-sm text-muted-foreground">Nivå: {intensityLabel(state.intensity)}</p>
           </div>
 
           <div className="mt-5 space-y-3">

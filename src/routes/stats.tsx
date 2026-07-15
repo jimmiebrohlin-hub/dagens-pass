@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Hash, Database, Trash2 } from "lucide-react";
 import { EXERCISES } from "@/lib/exercises";
+import { feedbackLabel } from "@/lib/hundredChallenge";
 import { useAppState, weekCount, createSampleState, defaultState } from "@/lib/storage";
 import { APP_NAME } from "@/lib/version";
 
@@ -91,6 +92,7 @@ function StatsPage() {
             <ul className="mt-4 space-y-3">
               {latest.map((session) => {
                 const done = session.exercises.filter((e) => e.status === "done").length;
+                const isHundred = session.mode === "hundred";
                 return (
                   <li key={session.id} className="rounded-2xl bg-secondary/60 p-4">
                     <div className="flex items-center justify-between gap-3">
@@ -98,7 +100,7 @@ function StatsPage() {
                       <p className="text-xs text-muted-foreground">{formatDate(session.completedAt)}</p>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {done} av {session.exercises.length} övningar klara
+                      {isHundred && session.feedback ? feedbackLabel(session.feedback) : `${done} av ${session.exercises.length} övningar klara`}
                       {session.totalReps ? ` · ${session.totalReps} reps` : ""}
                     </p>
                     <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
