@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import nodemailer from "npm:nodemailer@6.9.16";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,12 +35,13 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const resendApiKey = Deno.env.get("RESEND_API_KEY");
-  const emailFrom = Deno.env.get("STREAK_EMAIL_FROM") || "Vardagsstyrka <onboarding@resend.dev>";
+  const smtpUser = Deno.env.get("SMTP_USER");
+  const smtpPassword = Deno.env.get("SMTP_PASSWORD");
+  const emailFrom = Deno.env.get("EMAIL_FROM") || (smtpUser ? `Vardagsstyrka <${smtpUser}>` : null);
   const appUrl = Deno.env.get("APP_URL") || "https://vardagsstyrka.lovable.app/streak";
 
   if (!supabaseUrl || !anonKey || !serviceRoleKey) return json({ error: "supabase_env_missing" }, 500);
-  if (!resendApiKey) return json({ error: "RESEND_API_KEY_missing" }, 500);
+  if (!smtpUser || !smtpPassword || !emailFrom) return json({ error: "gmail_smtp_secrets_missing" }, 500);
 
   const authorization = req.headers.get("Authorization");
   if (!authorization) return json({ error: "not_authenticated" }, 401);
@@ -112,15 +114,21 @@ Deno.serve(async (req) => {
   const safeSender = escapeHtml(senderName);
   const safeStreak = escapeHtml(streak.name || "Streak med någon");
 
-  const resendResponse = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendApiKey}`,
-      "Content-Type": "application/json",
+  const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: {
+      user: smtpUser,
+      pass: smtpPassword.replaceAll(" ", ""),
     },
-    body: JSON.stringify({
+  });
+
+  let providerMessageId: string | null = null;
+  try {
+    const info = await transporter.sendMail({
       from: emailFrom,
-      to: [recipientEmail],
+      to: recipientEmail,
       subject: "Bollen är hos dig i Vardagsstyrka",
       text: `${senderName} har gjort Dagens 3 och skickat över bollen till dig. Streak: ${streak.name || "Streak med någon"}. Nu är det din tur — du har 36 timmar på dig. Öppna appen: ${appUrl}`,
       html: `
@@ -132,12 +140,11 @@ Deno.serve(async (req) => {
           <p style="margin-top:24px"><a href="${appUrl}" style="background:#111827;color:white;text-decoration:none;padding:12px 18px;border-radius:10px;display:inline-block">Öppna Vardagsstyrka</a></p>
         </div>
       `,
-    }),
-  });
-
-  const resendBody = await resendResponse.json().catch(() => ({}));
-  if (!resendResponse.ok) {
-    return json({ error: "email_provider_failed", status: resendResponse.status, details: resendBody }, 502);
+    });
+    providerMessageId = typeof info.messageId === "string" ? info.messageId : null;
+  } catch (error) {
+    console.error("Gmail SMTP send failed", error);
+    return json({ error: "email_provider_failed", details: error instanceof Error ? error.message : String(error) }, 502);
   }
 
   const { error: auditError } = await admin.from("streak_turn_email_notifications").insert({
@@ -146,12 +153,12 @@ Deno.serve(async (req) => {
     from_user_id: caller.id,
     to_user_id: toUserId,
     email: recipientEmail,
-    provider_message_id: typeof resendBody?.id === "string" ? resendBody.id : null,
+    provider_message_id: providerMessageId,
   });
 
   if (auditError && auditError.code !== "23505") {
     console.error("Could not store streak email audit", auditError);
   }
 
-  return json({ sent: true, to_user_id: toUserId, provider_message_id: resendBody?.id ?? null });
+  return json({ sent: true, to_user_id: toUserId, provider_message_id: providerMessageId });
 });
