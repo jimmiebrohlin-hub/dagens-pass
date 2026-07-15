@@ -2,8 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, Info, SkipForward } from "lucide-react";
 import { ExerciseIllustration } from "@/components/ExerciseIllustration";
+import { WorkoutFocusPicker } from "@/components/WorkoutFocusPicker";
 import {
-  WORKOUT_FOCUS_OPTIONS,
   applyIntensity,
   exerciseSetDose,
   intensityLabel,
@@ -44,12 +44,12 @@ function WorkoutPage() {
   const navigate = useNavigate();
   const [state, setState] = useAppState();
   const today = todayISO();
-  const needsFocusChoice = mode === "halvt" && !focus;
+  const needsFocusChoice = mode !== "dagens3" && !focus;
   const activeFocus = focus ?? "mix";
 
   const exercises = useMemo<Exercise[]>(() => {
     if (needsFocusChoice) return [];
-    if (mode === "stort") return pickLarge(`${today}:large`, state.preferences);
+    if (mode === "stort") return pickLarge(`${today}:large`, state.preferences, activeFocus);
     if (mode === "halvt") return pickSmall(`${today}:small`, state.preferences, activeFocus);
     return pickDailyThree(today, state.preferences);
   }, [activeFocus, mode, needsFocusChoice, state.preferences, today]);
@@ -81,7 +81,7 @@ function WorkoutPage() {
   const currentSet = Math.min(setNumberIndex + 1, totalSets);
   const finished = !needsFocusChoice && exerciseIndex >= exercises.length;
   const title = mode === "stort" ? "Stort blandpass" : mode === "halvt" ? "Litet blandpass" : "Dagens 3";
-  const titleDetail = mode === "halvt" ? `${title} · ${workoutFocusLabel(activeFocus)}` : title;
+  const titleDetail = mode !== "dagens3" ? `${title} · ${workoutFocusLabel(activeFocus)}` : title;
   const dailyDoneToday = mode === "dagens3" && state.sessions.some((session) => session.date === today && session.mode === "dagens3");
   const progressPercent = exercises.length > 0 ? Math.min(100, (exerciseIndex / exercises.length) * 100) : 0;
 
@@ -180,41 +180,8 @@ function WorkoutPage() {
     navigate({ to: "/" });
   }
 
-  if (needsFocusChoice) {
-    return (
-      <div className="min-h-screen bg-background text-foreground">
-        <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-8 pt-6">
-          <header className="mb-5 flex items-center gap-3">
-            <Link to="/" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-            <div>
-              <p className="text-lg font-semibold tracking-tight">Litet blandpass</p>
-              <p className="text-xs text-muted-foreground">Välj fokus · {intensityLabel(state.intensity)}</p>
-            </div>
-          </header>
-
-          <section className="rounded-[2rem] bg-card p-5 ring-1 ring-border/60">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Vad vill du träna idag?</p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight">Välj typ av pass</h1>
-            <p className="mt-2 text-sm text-muted-foreground">Appen varvar muskelgrupper när det går.</p>
-            <div className="mt-5 grid gap-2">
-              {WORKOUT_FOCUS_OPTIONS.map((option) => (
-                <Link
-                  key={option.id}
-                  to="/workout"
-                  search={{ mode: "halvt", focus: option.id }}
-                  className="rounded-2xl bg-secondary px-4 py-3 text-left ring-1 ring-border/40 active:scale-[0.99]"
-                >
-                  <span className="block text-base font-medium">{option.label}</span>
-                  <span className="mt-0.5 block text-xs text-muted-foreground">{option.description}</span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        </div>
-      </div>
-    );
+  if (needsFocusChoice && mode !== "dagens3") {
+    return <WorkoutFocusPicker mode={mode} intensity={state.intensity} />;
   }
 
   return (
