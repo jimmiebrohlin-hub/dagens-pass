@@ -1,5 +1,5 @@
 import type { WorkoutIntensity } from "./intensity";
-export { intensityLabel } from "./intensity";
+export { intensityLabel } from "./intensity.ts";
 
 export type ExerciseKind = "reps" | "time" | "side";
 export type MuscleGroup = "lower" | "upper" | "core";

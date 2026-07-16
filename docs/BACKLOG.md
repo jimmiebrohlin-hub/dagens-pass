@@ -10,12 +10,10 @@
 | 4 | Streak-mejl | Deploya `notify-streak-turn` Edge Function med Gmail SMTP-versionen | S | Väntar på Lovable-credits 1 aug |
 | 5 | Streak-mejl | End-to-end-test med två Google-konton: exakt ett mejl per bollöverlämning samt av/på-inställning | M | Efter deploy/secrets |
 | 6 | Streak-mejl | Kontrollera att Gmail SMTP fungerar från Supabase Edge Functions; byt annars till Gmail API över HTTPS | M | Teknisk risk efter deploy |
-| 7 | Kvalitet | Lägg automatiska tester för programurval och muskelgruppsalternering | M | Ej startad |
-| 8 | Kvalitet | Lägg regressionstest för 100 challenge-progression och återställning av aktiva pass | M | Efter 0.7.66 |
-| 9 | Kvalitet | Lägg integrationstest för streak-RPC, 36h-logik och mejldubblettskydd | L | Ej startad |
-| 10 | UX | Verifiera 0.7.66 på riktig mobil: fast Klar-rad, teknik tillbaka, omladdning och liten skärmhöjd | S | Väntar på Lovable-build |
-| 11 | UX | Lägg sökning/filter i den långa övningslistan i Inställningar | S | Ej startad |
-| 12 | UI | Standardisera återstående övningsbilder till ett gemensamt bildspråk | M | Ej startad |
+| 7 | Kvalitet | Lägg integrationstest för streak-RPC, 36h-logik och mejldubblettskydd | L | Ej startad |
+| 8 | UX | Verifiera 0.7.66 på riktig mobil: fast Klar-rad, teknik tillbaka, omladdning och liten skärmhöjd | S | Lovable-build bekräftad; mobiltest kvar |
+| 9 | UX | Lägg sökning/filter i den långa övningslistan i Inställningar | S | Ej startad |
+| 10 | UI | Standardisera återstående övningsbilder till ett gemensamt bildspråk | M | Ej startad |
 
 ## Klart
 
@@ -33,11 +31,14 @@
 | Träning | Samma fem fokusval används för både Litet blandpass och Stort blandpass |
 | Träning | 100 challenge fryser genomförd plan och skiljer den från nästa progression |
 | Träning | Pågående vanliga pass och 100 challenge återställs efter teknikvy eller omladdning |
+| Kvalitet | Automatiska tester täcker programurval, muskelgruppsalternering och skonsamt fokus |
+| Kvalitet | Regressionstest täcker 100 challenge-progression och återställning/rensning av aktiva pass |
 | UX | Coach Mode scrollar till toppen vid fasbyte och har en fast Klar-rad |
 | UX | Små språk- och affordancefel från videogenomgången är rättade |
 | Build | `package-lock.json` är synkad med Lovable-konfiguration 2.7.1 och verifierad med ren `npm ci` + produktionsbuild |
 | Build | 0.7.64 är bekräftad byggd i Lovable |
 | Build | 0.7.65 är verifierad i Lovable-preview via videogenomgång |
+| Build | 0.7.66 är bekräftad byggd i Lovable |
 
 ## Konfiguration som ska läggas in 1 augusti
 

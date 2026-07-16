@@ -39,6 +39,7 @@ Typ: Fortsatt utveckling
 
 | Version | Typ | Sammanfattning |
 |---|---|---|
+| 0.7.67 | Kvalitet | Automatiska regressionstest för programurval, muskelgruppsalternering, 100 challenge-progression och återställning av aktiva pass. |
 | 0.7.66 | Stabilitet/UX | Korrekt 100 challenge-progression, återställning av aktiva pass, fast Klar-rad och videobaserad UX-polering. |
 | 0.7.65 | Träning | Gemensamt fokusval för både litet och stort blandpass. |
 | Tidig grund | Projektstart | Repository, kodbas, backlog och dokumentationsstruktur. |
